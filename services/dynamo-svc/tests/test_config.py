@@ -13,13 +13,18 @@ class TestSettings:
         assert s.aws_region == "ap-southeast-1"
 
     def test_defaults_are_empty(self):
-        """Sensitive keys default to empty string."""
-        s = Settings()
-        assert s.aws_access_key_id == ""
-        assert s.aws_secret_access_key == ""
+        """Sensitive keys default to empty string when env is clean."""
+        with patch.dict(os.environ, {}, clear=True):
+            s = Settings()
+            assert s.aws_access_key_id == ""
+            assert s.aws_secret_access_key == ""
 
     def test_port_default(self):
         assert Settings().service_port == 8000
+
+    def test_dynamo_table_name_default(self):
+        """Default table should be 'vimal'."""
+        assert Settings().dynamo_table_name == "vimal"
 
     def test_env_override(self):
         """Env vars should override defaults."""
@@ -30,6 +35,7 @@ class TestSettings:
                 "AWS_SECRET_ACCESS_KEY": "secret123",
                 "AWS_REGION": "us-east-1",
                 "SERVICE_PORT": "9000",
+                "DYNAMO_TABLE": "my-table",
             },
             clear=True,
         ):
@@ -38,6 +44,7 @@ class TestSettings:
             assert s.aws_secret_access_key == "secret123"
             assert s.aws_region == "us-east-1"
             assert s.service_port == 9000
+            assert s.dynamo_table_name == "my-table"
 
     def test_dynamo_endpoint_url_none_by_default(self):
         s = Settings()

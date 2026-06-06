@@ -27,6 +27,15 @@ class TestSubmitMessage:
         assert data["status"] == "submitted"
         assert len(data["id"]) == 36  # UUID4 length
 
+        # Verify the item was put with the correct table and includes app field
+        call_args = mock_dynamo_client.put_item.call_args
+        assert call_args is not None
+        table_name, item = call_args[0]
+        assert table_name == "vimal"
+        assert item["app"] == "message"
+        assert item["name"] == "Alice"
+        assert item["email"] == "alice@example.com"
+
     def test_invalid_email(self, client):
         resp = client.post(
             "/messages",

@@ -27,6 +27,7 @@ def mock_settings():
         aws_secret_access_key="test-secret",
         aws_region="ap-southeast-1",
         dynamo_endpoint_url="http://localhost:8000",
+        dynamo_table_name="vimal",
     )
 
 
@@ -36,12 +37,12 @@ def mock_dynamo_client() -> Generator[MagicMock, None, None]:
     with patch("main.DynamoClient") as mock_cls:
         instance = mock_cls.return_value
         instance.get_item.return_value = None
-        instance.put_item.return_value = {"pk": "test", "data": "value"}
-        instance.update_item.return_value = {"pk": "test", "data": "updated"}
+        instance.put_item.return_value = {"app": "message", "id": "test", "data": "value"}
+        instance.update_item.return_value = {"app": "message", "data": "updated"}
         instance.delete_item.return_value = True
-        instance.query.return_value = [{"pk": "test", "sk": "a"}, {"pk": "test", "sk": "b"}]
-        instance.scan.return_value = [{"pk": "x"}, {"pk": "y"}, {"pk": "z"}]
-        instance.list_tables.return_value = ["users", "orders"]
+        instance.query.return_value = [{"app": "message", "id": "a"}, {"app": "message", "id": "b"}]
+        instance.scan.return_value = [{"app": "x"}, {"app": "y"}, {"app": "z"}]
+        instance.list_tables.return_value = ["vimal"]
         yield instance
 
 

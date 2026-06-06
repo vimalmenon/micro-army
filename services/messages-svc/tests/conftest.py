@@ -23,7 +23,7 @@ def mock_dynamo_client() -> Generator[MagicMock, None, None]:
         instance = mock_cls.return_value
         instance.get_item.return_value = None
         instance.put_item.return_value = {
-            "id": "abc-123", "name": "Alice", "read": False,
+            "app": "message", "id": "abc-123", "name": "Alice", "read": False,
         }
         instance.delete_item.return_value = True
         instance.scan.return_value = []

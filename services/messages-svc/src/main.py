@@ -1,9 +1,10 @@
 """Messages microservice — simple contact form submission for the website.
 
-Table schema (DynamoDB):
-  Table: messages
-  PK: id (string, UUID v4)
-  Attributes: id, name, email, subject, message, read, created_at
+Table schema (DynamoDB, single table "vimal"):
+  Table: vimal (configurable via DYNAMO_TABLE env var)
+  PK: app (string) = "message" for messages (configurable via APP_PREFIX)
+  SK: id (string, UUID v4)
+  Attributes: app, id, name, email, subject, message, read, created_at, updated_at
 """
 
 import logging
@@ -19,8 +20,6 @@ from models import CreateMessageRequest, HealthResponse, MessageResponse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-
-TABLE_NAME = "messages"
 
 
 @asynccontextmanager
@@ -61,6 +60,7 @@ async def submit_message(body: CreateMessageRequest):
     """Submit a contact form message from the website."""
     now = _now()
     item = {
+        "app": settings.app_prefix,
         "id": str(uuid.uuid4()),
         "name": body.name.strip(),
         "email": body.email.strip().lower(),
@@ -70,6 +70,6 @@ async def submit_message(body: CreateMessageRequest):
         "created_at": now,
         "updated_at": now,
     }
-    dynamo.put_item(TABLE_NAME, item)
+    dynamo.put_item(settings.dynamo_table_name, item)
     logger.info("Message submitted: id=%s from=%s subject=%s", item["id"], item["email"], item["subject"])
     return MessageResponse(id=item["id"])

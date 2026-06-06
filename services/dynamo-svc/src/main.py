@@ -37,10 +37,10 @@ app = FastAPI(
 dynamo = DynamoClient()
 
 
-def _build_key(pk: str, sk: str | None = None) -> dict:
-    key: dict = {"pk": pk}
-    if sk:
-        key["sk"] = sk
+def _build_key(app: str, id: str | None = None) -> dict:
+    key: dict = {"app": app}
+    if id:
+        key["id"] = id
     return key
 
 
@@ -63,13 +63,13 @@ async def list_tables():
 # ─── CRUD ──────────────────────────────────────────
 
 
-@app.get("/{table}/item/{pk}", response_model=ItemResponse, tags=["items"])
+@app.get("/{table}/item/{app}", response_model=ItemResponse, tags=["items"])
 async def get_item(
     table: str = Path(..., description="DynamoDB table name"),
-    pk: str = Path(..., description="Partition key value"),
-    sk: str | None = None,
+    app: str = Path(..., description="Partition key value (app)"),
+    id: str | None = None,
 ):
-    key = _build_key(pk, sk)
+    key = _build_key(app, id)
     item = dynamo.get_item(table, key)
     if item is None:
         raise HTTPException(status_code=404, detail=f"Item with key {key} not found in {table}")
@@ -102,13 +102,13 @@ async def update_item(
     return ItemResponse(item=result)
 
 
-@app.delete("/{table}/item/{pk}", response_model=DeleteResponse, tags=["items"])
+@app.delete("/{table}/item/{app}", response_model=DeleteResponse, tags=["items"])
 async def delete_item(
     table: str,
-    pk: str,
-    sk: str | None = None,
+    app: str,
+    id: str | None = None,
 ):
-    key = _build_key(pk, sk)
+    key = _build_key(app, id)
     dynamo.delete_item(table, key)
     return DeleteResponse(deleted=True)
 
