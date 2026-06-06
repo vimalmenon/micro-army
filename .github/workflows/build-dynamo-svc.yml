@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "shared/**"
       - "services/dynamo-svc/**"
       - ".github/workflows/**"
 
@@ -13,7 +14,30 @@ env:
   IMAGE_NAME: ${{ github.repository }}/dynamo-svc
 
 jobs:
+  shared-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shared
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install boto3==1.35.0 pytest==8.3.4
+
+      - name: Run shared tests
+        run: |
+          PYTHONPATH=. python -m pytest tests/ -v --tb=short
+
   test:
+    needs: [shared-test]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -70,7 +94,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: services/dynamo-svc
+          context: .
+          file: services/dynamo-svc/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
