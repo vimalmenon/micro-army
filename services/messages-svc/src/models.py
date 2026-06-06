@@ -13,19 +13,6 @@ class CreateMessageRequest(BaseModel):
     message: str
 
 
-class UpdateMessageRequest(BaseModel):
-    read: bool | None = None
-    subject: str | None = None
-
-
 class MessageResponse(BaseModel):
-    message: dict
-
-
-class MessageListResponse(BaseModel):
-    messages: list[dict]
-    count: int
-
-
-class DeleteResponse(BaseModel):
-    deleted: bool
+    id: str
+    status: str = "submitted"
