@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException
 
 from config import settings
 from models import CreateMessageRequest, HealthResponse, MessageResponse
-from shared.logging import setup_logging
+from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
 setup_logging("messages-svc")

@@ -14,7 +14,7 @@ from models import (
     ScanRequest,
     UpdateRequest,
 )
-from shared.logging import setup_logging
+from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
 setup_logging("dynamo-svc")
