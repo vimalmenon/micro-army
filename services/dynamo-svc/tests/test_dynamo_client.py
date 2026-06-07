@@ -30,7 +30,7 @@ def mock_boto3():
         # Mock resource
         mock_resource = MagicMock()
         mock_resource.Table.return_value = mock_table
-        mock_resource.tables.all.return_value = ["vimal"]
+        mock_resource.tables.all.return_value = [MagicMock(**{"name": "vimal"})]
 
         mock_boto3.resource.return_value = mock_resource
 
