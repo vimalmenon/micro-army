@@ -24,7 +24,7 @@ def mock_env():
         {
             "AWS_ACCESS_KEY_ID": "test-key",
             "AWS_SECRET_ACCESS_KEY": "test-secret",
-            "AWS_REGION": "ap-southeast-1",
+            "AWS_REGION": "us-east-1",
         },
         clear=True,
     ):
@@ -49,7 +49,7 @@ class TestSecretsManagerInit:
             "secretsmanager",
             aws_access_key_id="test-key",
             aws_secret_access_key="test-secret",
-            region_name="ap-southeast-1",
+            region_name="us-east-1",
         )
 
     def test_reuses_cached_client(self, mock_boto3):
@@ -101,12 +101,12 @@ class TestEnvFallback:
     def test_defaults_region(self, mock_boto3):
         with patch.dict(os.environ, {"AWS_REGION": ""}, clear=True):
             kwargs = SecretsManager._build_client_kwargs()
-            assert kwargs["region_name"] == "ap-southeast-1"
+            assert kwargs["region_name"] == "us-east-1"
 
     def test_handles_missing_keys(self, mock_boto3):
         with patch.dict(os.environ, {}, clear=True):
             kwargs = SecretsManager._build_client_kwargs()
-            assert kwargs == {"region_name": "ap-southeast-1"}
+            assert kwargs == {"region_name": "us-east-1"}
 
 
 class TestCache:

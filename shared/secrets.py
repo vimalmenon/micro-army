@@ -34,7 +34,7 @@ class SecretsManager:
             kwargs["aws_access_key_id"] = key
         if secret := os.environ.get("AWS_SECRET_ACCESS_KEY"):
             kwargs["aws_secret_access_key"] = secret
-        if region := os.environ.get("AWS_REGION") or "ap-southeast-1":
+        if region := os.environ.get("AWS_REGION") or "us-east-1":
             kwargs["region_name"] = region
         return kwargs
 

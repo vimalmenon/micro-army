@@ -8,9 +8,9 @@ from config import Settings, settings as global_settings
 
 class TestSettings:
     def test_default_region(self):
-        """Default region should be ap-southeast-1."""
+        """Default region should be us-east-1."""
         s = Settings()
-        assert s.aws_region == "ap-southeast-1"
+        assert Settings().aws_region == "us-east-1"
 
     def test_defaults_are_empty(self):
         """Sensitive keys default to empty string when env is clean."""

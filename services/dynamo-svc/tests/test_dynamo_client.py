@@ -62,7 +62,7 @@ class TestDynamoClientInit:
                 "dynamodb",
                 aws_access_key_id="test-key",
                 aws_secret_access_key="test-secret",
-                region_name="ap-southeast-1",
+                region_name="us-east-1",
                 endpoint_url="http://localhost:8000",
             )
 

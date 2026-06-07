@@ -25,7 +25,7 @@ def mock_settings():
     return Settings(
         aws_access_key_id="test-key",
         aws_secret_access_key="test-secret",
-        aws_region="ap-southeast-1",
+        aws_region="us-east-1",
         dynamo_endpoint_url="http://localhost:8000",
         dynamo_table_name="vimal",
     )

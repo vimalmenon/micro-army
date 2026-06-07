@@ -8,7 +8,7 @@ from config import Settings
 
 class TestSettings:
     def test_default_region(self):
-        assert Settings().aws_region == "ap-southeast-1"
+        assert Settings().aws_region == "us-east-1"
 
     def test_defaults_are_empty(self):
         with patch.dict(os.environ, {}, clear=True):
