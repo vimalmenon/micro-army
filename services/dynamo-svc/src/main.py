@@ -14,8 +14,10 @@ from models import (
     ScanRequest,
     UpdateRequest,
 )
+from shared.logging import setup_logging
+from shared.metrics import MetricsMiddleware, metrics_handler
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+setup_logging("dynamo-svc")
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +35,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# ─── Prometheus metrics ─────────────────────────
+app.add_middleware(MetricsMiddleware)
+app.add_route("/metrics", metrics_handler, include_in_schema=False)
 
 dynamo = DynamoClient()
 
