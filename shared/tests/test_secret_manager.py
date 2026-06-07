@@ -1,4 +1,4 @@
-"""Tests for shared.secrets module."""
+"""Tests for shared.secret_manager module."""
 
 import json
 import os
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import botocore
 import pytest
 
-from secrets import SecretsManager
+from secret_manager import SecretsManager
 
 
 @pytest.fixture(autouse=True)
@@ -33,7 +33,7 @@ def mock_env():
 
 @pytest.fixture
 def mock_boto3():
-    with patch("secrets.boto3") as mock_boto3:
+    with patch("secret_manager.boto3") as mock_boto3:
         mock_client = MagicMock()
         mock_client.get_secret_value.return_value = {
             "SecretString": json.dumps({"username": "admin", "password": "secret123"}),

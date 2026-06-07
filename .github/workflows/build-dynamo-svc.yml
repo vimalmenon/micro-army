@@ -57,7 +57,7 @@ jobs:
 
       - name: Run tests
         run: |
-          PYTHONPATH=src python -m pytest tests/ -v --tb=short
+          PYTHONPATH=src:../../shared python -m pytest tests/ -v --tb=short
 
   build:
     needs: [test]
