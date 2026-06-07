@@ -1,7 +1,7 @@
 """Shared fixtures for messages-svc tests."""
 
 from collections.abc import Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,32 +9,20 @@ from fastapi.testclient import TestClient
 from main import app
 
 
-@pytest.fixture(autouse=True)
-def reset_dynamo_singleton():
-    from dynamo_client import DynamoClient
+@pytest.fixture
+def mock_dynamo_svc() -> Generator[AsyncMock, None, None]:
+    """Mock httpx.AsyncClient.post so no real HTTP calls are made."""
+    mock_post = AsyncMock()
+    mock_post.return_value.status_code = 200
+    mock_post.return_value.json.return_value = {"item": {}}
 
-    DynamoClient._instance = None
-    yield
+    with patch("main.httpx.AsyncClient") as mock_client_cls:
+        mock_client = mock_client_cls.return_value.__aenter__.return_value
+        mock_client.post = mock_post
+        yield mock_post
 
 
 @pytest.fixture
-def mock_dynamo_client() -> Generator[MagicMock, None, None]:
-    with patch("main.DynamoClient") as mock_cls:
-        instance = mock_cls.return_value
-        instance.get_item.return_value = None
-        instance.put_item.return_value = {
-            "app": "message", "id": "abc-123", "name": "Alice", "read": False,
-        }
-        instance.delete_item.return_value = True
-        instance.scan.return_value = []
-        instance.query.return_value = []
-        yield instance
-
-
-@pytest.fixture
-def client(mock_dynamo_client: MagicMock) -> Generator[TestClient, None, None]:
-    import main as main_module
-
-    main_module.dynamo = mock_dynamo_client
+def client() -> Generator[TestClient, None, None]:
     with TestClient(app) as c:
         yield c

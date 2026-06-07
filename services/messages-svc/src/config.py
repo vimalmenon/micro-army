@@ -4,12 +4,11 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Settings:
-    aws_access_key_id: str = field(default_factory=lambda: os.getenv("AWS_ACCESS_KEY_ID", ""))
-    aws_secret_access_key: str = field(default_factory=lambda: os.getenv("AWS_SECRET_ACCESS_KEY", ""))
-    aws_region: str = field(default_factory=lambda: os.getenv("AWS_REGION", "us-east-1"))
-    dynamo_endpoint_url: str | None = field(default_factory=lambda: os.getenv("DYNAMO_ENDPOINT_URL") or None)
-    dynamo_table_name: str = field(default_factory=lambda: os.getenv("DYNAMO_TABLE", "vimal"))
-    app_prefix: str = field(default_factory=lambda: os.getenv("APP_PREFIX", "message"))
+    dynamo_svc_url: str = field(
+        default_factory=lambda: os.getenv(
+            "DYNAMO_SVC_URL", "http://dynamo-svc.microservices.svc.cluster.local:8000"
+        )
+    )
     service_port: int = field(default_factory=lambda: int(os.getenv("SERVICE_PORT", "8000")))
 
 

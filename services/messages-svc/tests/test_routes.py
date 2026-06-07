@@ -1,6 +1,6 @@
 """Tests for FastAPI routes — only health + submit endpoints."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import status
@@ -14,7 +14,7 @@ class TestHealth:
 
 
 class TestSubmitMessage:
-    def test_submits_successfully(self, client, mock_dynamo_client: MagicMock):
+    def test_submits_successfully(self, client, mock_dynamo_svc: AsyncMock):
         body = {
             "name": "Alice",
             "email": "alice@example.com",
@@ -27,14 +27,30 @@ class TestSubmitMessage:
         assert data["status"] == "submitted"
         assert len(data["id"]) == 36  # UUID4 length
 
-        # Verify the item was put with the correct table and includes app field
-        call_args = mock_dynamo_client.put_item.call_args
-        assert call_args is not None
-        table_name, item = call_args[0]
-        assert table_name == "vimal"
-        assert item["app"] == "message"
-        assert item["name"] == "Alice"
-        assert item["email"] == "alice@example.com"
+        # Verify the HTTP call was made to dynamo-svc
+        mock_dynamo_svc.assert_called_once()
+        call_url = mock_dynamo_svc.call_args[0][0]
+        call_json = mock_dynamo_svc.call_args[1]["json"]
+        assert "vimal/item" in call_url
+        assert call_json["app"] == "message"
+        assert call_json["name"] == "Alice"
+        assert call_json["email"] == "alice@example.com"
+
+    def test_dynamo_svc_error(self, client, mock_dynamo_svc: AsyncMock):
+        mock_dynamo_svc.return_value.status_code = 500
+        mock_dynamo_svc.return_value.text = "Internal Server Error"
+
+        resp = client.post(
+            "/messages",
+            json={
+                "name": "Bob",
+                "email": "bob@test.com",
+                "subject": "Fail",
+                "message": "Should 502",
+            },
+        )
+        assert resp.status_code == 502
+        assert "Failed to store message" in resp.json()["detail"]
 
     def test_invalid_email(self, client):
         resp = client.post(
