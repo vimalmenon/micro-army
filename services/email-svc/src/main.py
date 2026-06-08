@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import urllib.parse
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -20,6 +21,9 @@ setup_logging("email-svc")
 logger = logging.getLogger(__name__)
 
 dynamo_svc_url = settings.dynamo_svc_url
+
+# DynamoDB partition key following CA# convention for single-table design
+APP_PARTITION = "CA#Message"
 
 
 @asynccontextmanager
@@ -101,10 +105,10 @@ async def _store_record(record: EmailRecord) -> dict:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             item = record.model_dump()
-            item["app"] = "email"
-            resp = await client.put(
-                f"{dynamo_svc_url}/items/vimal/email/{record.id}",
-                json={"item": item},
+            item["app"] = APP_PARTITION
+            resp = await client.post(
+                f"{dynamo_svc_url}/vimal/item",
+                json=item,
             )
             if resp.status_code not in (200, 201):
                 logger.warning("Failed to store email record: %s", resp.text)
@@ -117,10 +121,12 @@ async def _store_record(record: EmailRecord) -> dict:
 @app.get("/email/{email_id}", response_model=EmailRecord)
 async def get_email(email_id: str):
     """Retrieve an email record from DynamoDB."""
+    app_encoded = urllib.parse.quote(APP_PARTITION, safe="")
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
-                f"{dynamo_svc_url}/items/vimal/email/{email_id}"
+                f"{dynamo_svc_url}/vimal/item/{app_encoded}",
+                params={"id": email_id},
             )
             if resp.status_code == 404:
                 raise HTTPException(status_code=404, detail="Email not found")
