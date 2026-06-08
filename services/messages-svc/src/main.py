@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 
 from config import settings
 from models import CreateMessageRequest, HealthResponse, MessageResponse
@@ -44,6 +45,14 @@ app.add_route("/metrics", metrics_handler, include_in_schema=False)
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ─── Root redirect ──────────────────────────────
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
 
 # ─── Health ─────────────────────────────────────
