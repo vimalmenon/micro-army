@@ -32,7 +32,7 @@ class TestSubmitMessage:
         call_url = mock_dynamo_svc.call_args[0][0]
         call_json = mock_dynamo_svc.call_args[1]["json"]
         assert "vimal/item" in call_url
-        assert call_json["app"] == "message"
+        assert call_json["app"] == "CA#ContactSubmission"
         assert call_json["name"] == "Alice"
         assert call_json["email"] == "alice@example.com"
 

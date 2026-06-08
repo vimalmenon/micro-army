@@ -19,6 +19,9 @@ from shared.metrics import MetricsMiddleware, metrics_handler
 setup_logging("messages-svc")
 logger = logging.getLogger(__name__)
 
+# DynamoDB partition key following CA# convention for single-table design
+APP_PARTITION = "CA#ContactSubmission"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -59,7 +62,7 @@ async def submit_message(body: CreateMessageRequest):
     """Submit a contact form message via dynamo-svc API."""
     now = _now()
     item = {
-        "app": "message",
+        "app": APP_PARTITION,
         "id": str(uuid.uuid4()),
         "name": body.name.strip(),
         "email": body.email.strip().lower(),
