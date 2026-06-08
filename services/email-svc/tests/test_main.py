@@ -45,6 +45,37 @@ def test_send_email_success(mock_send):
     )
 
 
+@patch("email_sender.email_sender.send", return_value=(True, ""))
+@patch("main.httpx.AsyncClient")
+def test_send_email_stores_in_dynamo(mock_http, mock_send):
+    """Verify the email record is correctly stored in DynamoDB via dynamo-svc."""
+    mock_post = AsyncMock()
+    mock_post.status_code = 201
+    mock_post.json.return_value = {"item": {"id": "abc"}}
+    mock_http.return_value.__aenter__.return_value.post = mock_post
+
+    resp = client.post(
+        "/email",
+        json={
+            "to": "test@example.com",
+            "subject": "Storage Test",
+            "body": "<p>Check DynamoDB</p>",
+            "body_type": "html",
+        },
+    )
+    assert resp.status_code == 200
+
+    # Verify the call to dynamo-svc
+    call_url = mock_post.call_args[0][0]
+    call_json = mock_post.call_args[1]["json"]
+    assert "vimal/item" in call_url
+    assert call_json["app"] == "CA#Message"
+    assert call_json["to"] == "test@example.com"
+    assert call_json["subject"] == "Storage Test"
+    assert call_json["status"] == "sent"
+    assert len(call_json["id"]) == 36  # UUID4 length
+
+
 @patch("email_sender.email_sender.send", return_value=(False, "SMTP auth failed"))
 def test_send_email_failure(mock_send):
     resp = client.post(
