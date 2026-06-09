@@ -112,7 +112,7 @@ async def _fetch_all_items(app: str = APP_PARTITION) -> list[dict[str, Any]]:
     """Scan dynamo-svc for all items in a given app partition."""
     body = {
         "filter_expression": "app = :app",
-        "expression_attr_values": {":app": {"S": app}},
+        "expression_attr_values": {":app": app},
     }
     data = await _call_dynamo("POST", "/vimal/scan", json_body=body)
     if isinstance(data, dict):
