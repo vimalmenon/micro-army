@@ -1,0 +1,60 @@
+name: Build and Push Micro-Army Images
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'services/**'
+      - 'shared/**'
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to build (e.g. youtube-svc)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  find-changed:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changed.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect changed services
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "services=${{ github.event.inputs.service }}" >> "$GITHUB_OUTPUT"
+          else
+            changed=$(git diff --name-only origin/main...HEAD -- services/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n")[:-1]')
+            echo "services=$changed" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push:
+    needs: find-changed
+    if: ${{ needs.find-changed.outputs.services != '[]' && needs.find-changed.outputs.services != '' }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.find-changed.outputs.services) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ghcr.io/vimalmenon/micro-army/${{ matrix.service }}:latest
