@@ -109,25 +109,26 @@ async def _call_s3(method: str, path: str, **params) -> httpx.Response | None:
 
 
 async def _fetch_all_items(app: str = APP_PARTITION) -> list[dict[str, Any]]:
-    """Fetch all items for a given app partition from dynamo-svc."""
-    data = await _call_dynamo("GET", f"/vimal/items?app={app}")
-    if isinstance(data, list):
-        return data
+    """Scan dynamo-svc for all items in a given app partition."""
+    body = {
+        "filter_expression": "app = :app",
+        "expression_attr_values": {":app": {"S": app}},
+    }
+    data = await _call_dynamo("POST", "/vimal/scan", json_body=body)
     if isinstance(data, dict):
-        return data.get("items", data.get("data", []))
+        return data.get("items", [])
     return []
 
 
 async def _fetch_item(app: str, item_id: str) -> dict[str, Any] | None:
     """Fetch a single item. Returns None if not found."""
     try:
-        data = await _call_dynamo("GET", f"/vimal/item?app={app}&id={item_id}")
-        return data if isinstance(data, dict) else None
-    except HTTPException as e:
-        if e.status_code == 502:
-            # Check if it's a 404 from dynamo-svc vs a real error
-            return None
-        raise
+        data = await _call_dynamo("GET", f"/vimal/item/{app}?id={item_id}")
+        if isinstance(data, dict) and "item" in data:
+            return data["item"]
+        return None
+    except HTTPException:
+        return None
 
 
 async def _put_item(item: dict[str, Any]) -> dict:
@@ -138,7 +139,7 @@ async def _put_item(item: dict[str, Any]) -> dict:
 async def _delete_item(app: str, item_id: str) -> bool:
     """Delete an item from DynamoDB. Returns True if deleted."""
     try:
-        await _call_dynamo("DELETE", f"/vimal/item?app={app}&id={item_id}")
+        await _call_dynamo("DELETE", f"/vimal/item/{app}?id={item_id}")
         return True
     except HTTPException:
         return False

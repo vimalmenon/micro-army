@@ -52,12 +52,16 @@ class TestCreateArticle:
 
 class TestListArticles:
     def test_lists_articles(self, client, mock_dynamo_transport):
-        mock_dynamo_transport.response_data = [
-            {"app": "wiki", "id": "a1", "title": "Article 1", "content": "Body", "tags": ["homelab"],
-             "files": [], "author": "elara", "created_at": "", "updated_at": ""},
-            {"app": "wiki", "id": "a2", "title": "Article 2", "content": "Body", "tags": ["youtube"],
-             "files": [], "author": "elara", "created_at": "", "updated_at": ""},
-        ]
+        # Response shape from POST /vimal/scan
+        mock_dynamo_transport.response_data = {
+            "items": [
+                {"app": "wiki", "id": "a1", "title": "Article 1", "content": "Body", "tags": ["homelab"],
+                 "files": [], "author": "elara", "created_at": "", "updated_at": ""},
+                {"app": "wiki", "id": "a2", "title": "Article 2", "content": "Body", "tags": ["youtube"],
+                 "files": [], "author": "elara", "created_at": "", "updated_at": ""},
+            ],
+            "count": 2,
+        }
 
         resp = client.get("/wiki")
         assert resp.status_code == 200
@@ -66,12 +70,15 @@ class TestListArticles:
         assert len(data["articles"]) == 2
 
     def test_filter_by_tag(self, client, mock_dynamo_transport):
-        mock_dynamo_transport.response_data = [
-            {"app": "wiki", "id": "a1", "title": "A1", "content": "", "tags": ["homelab"],
-             "files": [], "author": "elara", "created_at": "", "updated_at": ""},
-            {"app": "wiki", "id": "a2", "title": "A2", "content": "", "tags": ["youtube"],
-             "files": [], "author": "elara", "created_at": "", "updated_at": ""},
-        ]
+        mock_dynamo_transport.response_data = {
+            "items": [
+                {"app": "wiki", "id": "a1", "title": "A1", "content": "", "tags": ["homelab"],
+                 "files": [], "author": "elara", "created_at": "", "updated_at": ""},
+                {"app": "wiki", "id": "a2", "title": "A2", "content": "", "tags": ["youtube"],
+                 "files": [], "author": "elara", "created_at": "", "updated_at": ""},
+            ],
+            "count": 2,
+        }
 
         resp = client.get("/wiki?tag=homelab")
         assert resp.status_code == 200
@@ -82,11 +89,14 @@ class TestListArticles:
 
 class TestGetArticle:
     def test_gets_article(self, client, mock_dynamo_transport):
+        # Response shape from GET /vimal/item/{app}?id=...
         mock_dynamo_transport.response_data = {
-            "app": "wiki", "id": "my-article", "title": "My Title",
-            "content": "Body", "tags": ["test"], "files": [],
-            "author": "elara", "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-01T00:00:00Z",
+            "item": {
+                "app": "wiki", "id": "my-article", "title": "My Title",
+                "content": "Body", "tags": ["test"], "files": [],
+                "author": "elara", "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+            }
         }
 
         resp = client.get("/wiki/my-article")
@@ -94,8 +104,6 @@ class TestGetArticle:
         assert resp.json()["id"] == "my-article"
 
     def test_not_found(self, client, mock_dynamo_transport):
-        # Return data that's not a dict — _fetch_item returns None
-        mock_dynamo_transport.response_data = {"error": "not found"}
         mock_dynamo_transport.response_status = 404
 
         resp = client.get("/wiki/unknown")
@@ -105,11 +113,13 @@ class TestGetArticle:
 class TestUpdateArticle:
     def test_updates_successfully(self, client, mock_dynamo_transport):
         mock_dynamo_transport.response_data = {
-            "app": "wiki", "id": "test-article", "title": "Old title",
-            "content": "Old body", "tags": ["old"], "files": [],
-            "author": "elara",
-            "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-01T00:00:00Z",
+            "item": {
+                "app": "wiki", "id": "test-article", "title": "Old title",
+                "content": "Old body", "tags": ["old"], "files": [],
+                "author": "elara",
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+            }
         }
 
         resp = client.put("/wiki/test-article", json={"title": "New title", "tags": ["new"]})
@@ -128,11 +138,13 @@ class TestUpdateArticle:
 class TestDeleteArticle:
     def test_deletes_successfully(self, client, mock_dynamo_transport):
         mock_dynamo_transport.response_data = {
-            "app": "wiki", "id": "del-article", "title": "Delete me",
-            "content": "Bye", "tags": [], "files": [],
-            "author": "elara",
-            "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-01T00:00:00Z",
+            "item": {
+                "app": "wiki", "id": "del-article", "title": "Delete me",
+                "content": "Bye", "tags": [], "files": [],
+                "author": "elara",
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+            }
         }
 
         resp = client.delete("/wiki/del-article")
@@ -148,12 +160,15 @@ class TestDeleteArticle:
 
 class TestSearch:
     def test_search_finds_match(self, client, mock_dynamo_transport):
-        mock_dynamo_transport.response_data = [
-            {"app": "wiki", "id": "n8n-restart", "title": "Restart n8n", "content": "kubectl rollout",
-             "tags": ["k8s"], "files": [], "author": "elara", "created_at": "", "updated_at": ""},
-            {"app": "wiki", "id": "grafana-setup", "title": "Grafana setup", "content": "Dashboard config",
-             "tags": ["monitoring"], "files": [], "author": "elara", "created_at": "", "updated_at": ""},
-        ]
+        mock_dynamo_transport.response_data = {
+            "items": [
+                {"app": "wiki", "id": "n8n-restart", "title": "Restart n8n", "content": "kubectl rollout",
+                 "tags": ["k8s"], "files": [], "author": "elara", "created_at": "", "updated_at": ""},
+                {"app": "wiki", "id": "grafana-setup", "title": "Grafana setup", "content": "Dashboard config",
+                 "tags": ["monitoring"], "files": [], "author": "elara", "created_at": "", "updated_at": ""},
+            ],
+            "count": 2,
+        }
 
         resp = client.get("/wiki/search/n8n")
         assert resp.status_code == 200
@@ -162,10 +177,13 @@ class TestSearch:
         assert data["articles"][0]["id"] == "n8n-restart"
 
     def test_search_no_matches(self, client, mock_dynamo_transport):
-        mock_dynamo_transport.response_data = [
-            {"app": "wiki", "id": "test", "title": "Test", "content": "Body",
-             "tags": [], "files": [], "author": "elara", "created_at": "", "updated_at": ""},
-        ]
+        mock_dynamo_transport.response_data = {
+            "items": [
+                {"app": "wiki", "id": "test", "title": "Test", "content": "Body",
+                 "tags": [], "files": [], "author": "elara", "created_at": "", "updated_at": ""},
+            ],
+            "count": 1,
+        }
 
         resp = client.get("/wiki/search/zzzzzz")
         assert resp.status_code == 200
