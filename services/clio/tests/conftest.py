@@ -42,7 +42,6 @@ def mock_dynamo_client() -> Generator[MagicMock, None, None]:
         instance.delete_item.return_value = True
         instance.query.return_value = [{"app": "message", "id": "a"}, {"app": "message", "id": "b"}]
         instance.scan.return_value = [{"app": "x"}, {"app": "y"}, {"app": "z"}]
-        instance.list_tables.return_value = ["vimal"]
         yield instance
 
 

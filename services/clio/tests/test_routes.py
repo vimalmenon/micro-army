@@ -14,19 +14,6 @@ class TestHealth:
         assert data == {"status": "ok", "service": "clio"}
 
 
-class TestListTables:
-    def test_returns_tables(self, client, mock_dynamo_client: MagicMock):
-        mock_dynamo_client.list_tables.return_value = ["vimal", "other"]
-        resp = client.get("/tables")
-        assert resp.status_code == status.HTTP_200_OK
-        assert resp.json() == {"tables": ["vimal", "other"]}
-
-    def test_empty(self, client, mock_dynamo_client: MagicMock):
-        mock_dynamo_client.list_tables.return_value = []
-        resp = client.get("/tables")
-        assert resp.json() == {"tables": []}
-
-
 class TestGetItem:
     def test_found(self, client, mock_dynamo_client: MagicMock):
         mock_dynamo_client.get_item.return_value = {"app": "user", "id": "abc", "name": "test"}

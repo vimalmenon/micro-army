@@ -194,11 +194,6 @@ class TestDynamoClientMethods:
         # Called with no arguments — no kwargs should include filter/limit
         mock_boto3["table"].scan.assert_called_once_with()
 
-    def test_list_tables(self, mock_boto3):
-        client = DynamoClient()
-        result = client.list_tables()
-        assert result == ["vimal"]
-
     def test_query_pagination(self, mock_boto3):
         """Simulate pagination with LastEvaluatedKey."""
         first_call = {"Items": [{"app": "p1"}], "LastEvaluatedKey": {"app": "p1"}}

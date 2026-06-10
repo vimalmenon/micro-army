@@ -58,14 +58,6 @@ async def health():
     return HealthResponse()
 
 
-# ─── List Tables ───────────────────────────────────
-
-
-@app.get("/tables", tags=["tables"])
-async def list_tables():
-    return {"tables": dynamo.list_tables()}
-
-
 # ─── CRUD ──────────────────────────────────────────
 
 

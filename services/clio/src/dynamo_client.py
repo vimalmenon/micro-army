@@ -160,9 +160,3 @@ class DynamoClient:
             logger.error("scan failed: %s", e)
             raise
 
-    def list_tables(self) -> list[str]:
-        try:
-            return [t.name for t in self._resource.tables.all()]
-        except (ClientError, BotoCoreError) as e:
-            logger.error("list_tables failed: %s", e)
-            raise
