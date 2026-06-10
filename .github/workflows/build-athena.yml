@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "shared/**"
-      - "services/wiki-svc/**"
+      - "services/athena/**"
       - ".github/workflows/**"
 
 env:
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/wiki-svc
+        working-directory: services/athena
 
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: services/wiki-svc/Dockerfile
+          file: services/athena/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "shared/**"
-      - "services/s3-svc/**"
+      - "services/atlas/**"
       - ".github/workflows/**"
 
 env:
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/s3-svc
+        working-directory: services/atlas
 
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +95,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: services/s3-svc/Dockerfile
+          file: services/atlas/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

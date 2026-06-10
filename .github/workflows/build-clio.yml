@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "shared/**"
-      - "services/dynamo-svc/**"
+      - "services/clio/**"
       - ".github/workflows/**"
 
 env:
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/dynamo-svc
+        working-directory: services/clio
 
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +95,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: services/dynamo-svc/Dockerfile
+          file: services/clio/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
