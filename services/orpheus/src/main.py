@@ -90,7 +90,7 @@ def _dynamo_url(path: str) -> str:
 
 
 def _s3_url(path: str) -> str:
-    return f"{settings.s3_svc_url.rstrip('/')}{path}"
+    return f"{settings.s3_svc_url.rstrip('/')}/{path.lstrip('/')}"
 
 
 async def _call_dynamo(method: str, path: str, json_body: dict | None = None) -> Any:
