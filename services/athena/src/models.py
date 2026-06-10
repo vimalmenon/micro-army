@@ -64,7 +64,7 @@ class FileAttachRequest(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    service: str = "wiki-svc"
+    service: str = "athena"
 
 
 class ArticleResponse(BaseModel):

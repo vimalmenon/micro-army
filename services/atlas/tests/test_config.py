@@ -1,4 +1,4 @@
-"""Tests for s3-svc configuration."""
+"""Tests for atlas configuration."""
 
 import os
 from unittest.mock import patch

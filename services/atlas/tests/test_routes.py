@@ -1,4 +1,4 @@
-"""Tests for s3-svc FastAPI routes — all AWS calls mocked."""
+"""Tests for atlas FastAPI routes — all AWS calls mocked."""
 
 from unittest.mock import MagicMock, patch
 
@@ -48,7 +48,7 @@ class TestHealth:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
-        assert data["service"] == "s3-svc"
+        assert data["service"] == "atlas"
 
 
 class TestUpload:

@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    service: str = "messages-svc"
+    service: str = "angelos"
 
 
 class CreateMessageRequest(BaseModel):

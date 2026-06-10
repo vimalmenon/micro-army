@@ -1,4 +1,4 @@
-"""Tests for Pydantic models used in dynamo-svc."""
+"""Tests for Pydantic models used in clio."""
 
 import json
 
@@ -17,7 +17,7 @@ class TestHealthResponse:
     def test_defaults(self):
         resp = HealthResponse()
         assert resp.status == "ok"
-        assert resp.service == "dynamo-svc"
+        assert resp.service == "clio"
 
     def test_custom_values(self):
         resp = HealthResponse(status="degraded", service="custom")
@@ -27,7 +27,7 @@ class TestHealthResponse:
     def test_serialization(self):
         resp = HealthResponse()
         data = json.loads(resp.model_dump_json())
-        assert data == {"status": "ok", "service": "dynamo-svc"}
+        assert data == {"status": "ok", "service": "clio"}
 
 
 class TestItemResponse:

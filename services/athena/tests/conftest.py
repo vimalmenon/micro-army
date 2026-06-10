@@ -1,4 +1,4 @@
-"""Shared fixtures for wiki-svc tests — using httpx transport mocking."""
+"""Shared fixtures for athena tests — using httpx transport mocking."""
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import patch

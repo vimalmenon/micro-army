@@ -1,4 +1,4 @@
-"""Tests for s3-svc models — content type detection and S3 key generation."""
+"""Tests for atlas models — content type detection and S3 key generation."""
 
 import pytest
 

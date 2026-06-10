@@ -17,7 +17,7 @@ from models import EmailRecord, EmailResponse, HealthResponse, SendEmailRequest
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
-setup_logging("email-svc")
+setup_logging("iris")
 logger = logging.getLogger(__name__)
 
 dynamo_svc_url = settings.dynamo_svc_url
@@ -28,13 +28,13 @@ APP_PARTITION = "CA#Message"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting email-svc...")
+    logger.info("Starting iris...")
     yield
-    logger.info("Shutting down email-svc...")
+    logger.info("Shutting down iris...")
 
 
 app = FastAPI(
-    title="email-svc",
+    title="iris",
     description="Send emails via SMTP and record in DynamoDB",
     version="1.0.0",
     lifespan=lifespan,
@@ -46,7 +46,7 @@ app.add_route("/metrics", metrics_handler, methods=["GET"])
 
 @app.get("/health", response_model=HealthResponse)
 async def health():
-    return HealthResponse(service="email-svc")
+    return HealthResponse(service="iris")
 
 
 @app.post("/email", response_model=EmailResponse)

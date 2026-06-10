@@ -30,7 +30,7 @@ from models import (
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
-setup_logging("youtube-svc")
+setup_logging("orpheus")
 logger = logging.getLogger(__name__)
 
 APP_PARTITION = "youtube"
@@ -38,13 +38,13 @@ APP_PARTITION = "youtube"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting youtube-svc...")
+    logger.info("Starting orpheus...")
     yield
-    logger.info("Shutting down youtube-svc...")
+    logger.info("Shutting down orpheus...")
 
 
 app = FastAPI(
-    title="youtube-svc",
+    title="orpheus",
     description="YouTube video management — metadata store, scheduling, and upload via YouTube Data API",
     version="1.0.0",
     lifespan=lifespan,

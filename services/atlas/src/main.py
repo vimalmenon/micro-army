@@ -17,20 +17,20 @@ from s3_client import S3Client
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
-setup_logging("s3-svc")
+setup_logging("atlas")
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting s3-svc...")
+    logger.info("Starting atlas...")
     S3Client()
     yield
-    logger.info("Shutting down s3-svc...")
+    logger.info("Shutting down atlas...")
 
 
 app = FastAPI(
-    title="s3-svc",
+    title="atlas",
     description="S3 file storage gateway microservice",
     version="1.0.0",
     lifespan=lifespan,
@@ -48,7 +48,7 @@ s3 = S3Client()
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    service: str = "s3-svc"
+    service: str = "atlas"
 
 
 class UploadRequest(BaseModel):

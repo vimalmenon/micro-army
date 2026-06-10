@@ -1,4 +1,4 @@
-"""Shared fixtures for messages-svc tests."""
+"""Shared fixtures for angelos tests."""
 
 from collections.abc import Generator
 from unittest.mock import AsyncMock, patch

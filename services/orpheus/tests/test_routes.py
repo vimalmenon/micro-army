@@ -1,4 +1,4 @@
-"""Tests for youtube-svc FastAPI routes."""
+"""Tests for orpheus FastAPI routes."""
 
 from fastapi import status
 
@@ -17,7 +17,7 @@ class TestHealth:
     def test_returns_ok(self, client, mock_dynamo_transport):
         resp = client.get("/health")
         assert resp.status_code == status.HTTP_200_OK
-        assert resp.json() == {"status": "ok", "service": "youtube-svc"}
+        assert resp.json() == {"status": "ok", "service": "orpheus"}
 
 
 class TestCreateVideo:

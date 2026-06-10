@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    service: str = "email-svc"
+    service: str = "iris"
 
 
 class SendEmailRequest(BaseModel):

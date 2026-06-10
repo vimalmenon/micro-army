@@ -1,4 +1,4 @@
-"""Shared fixtures for youtube-svc tests — using httpx transport mocking."""
+"""Shared fixtures for orpheus tests — using httpx transport mocking."""
 
 from collections.abc import Generator
 from typing import Any

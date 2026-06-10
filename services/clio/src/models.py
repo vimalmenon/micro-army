@@ -39,4 +39,4 @@ class DeleteResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    service: str = "dynamo-svc"
+    service: str = "clio"

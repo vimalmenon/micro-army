@@ -1,4 +1,4 @@
-"""Shared fixtures for dynamo-svc tests."""
+"""Shared fixtures for clio tests."""
 
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch

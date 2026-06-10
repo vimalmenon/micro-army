@@ -10,7 +10,7 @@ class TestHealth:
     def test_returns_ok(self, client):
         resp = client.get("/health")
         assert resp.status_code == status.HTTP_200_OK
-        assert resp.json() == {"status": "ok", "service": "messages-svc"}
+        assert resp.json() == {"status": "ok", "service": "angelos"}
 
 
 class TestSubmitMessage:

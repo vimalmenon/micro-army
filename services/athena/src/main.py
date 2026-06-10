@@ -34,7 +34,7 @@ from models import (
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
-setup_logging("wiki-svc")
+setup_logging("athena")
 logger = logging.getLogger(__name__)
 
 # All wiki articles live under this DynamoDB partition
@@ -43,13 +43,13 @@ APP_PARTITION = "wiki"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting wiki-svc...")
+    logger.info("Starting athena...")
     yield
-    logger.info("Shutting down wiki-svc...")
+    logger.info("Shutting down athena...")
 
 
 app = FastAPI(
-    title="wiki-svc",
+    title="athena",
     description="Tag-based wiki knowledge store — DynamoDB-backed, S3 file attachments",
     version="1.0.0",
     lifespan=lifespan,

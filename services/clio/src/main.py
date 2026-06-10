@@ -17,20 +17,20 @@ from models import (
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
-setup_logging("dynamo-svc")
+setup_logging("clio")
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting dynamo-svc...")
+    logger.info("Starting clio...")
     DynamoClient()
     yield
-    logger.info("Shutting down dynamo-svc...")
+    logger.info("Shutting down clio...")
 
 
 app = FastAPI(
-    title="dynamo-svc",
+    title="clio",
     description="Amazon DynamoDB gateway microservice",
     version="1.0.0",
     lifespan=lifespan,

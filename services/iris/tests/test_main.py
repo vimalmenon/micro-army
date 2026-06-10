@@ -1,4 +1,4 @@
-"""Tests for email-svc."""
+"""Tests for iris."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ client = TestClient(app)
 def test_health():
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json()["service"] == "email-svc"
+    assert resp.json()["service"] == "iris"
 
 
 @patch("email_sender.email_sender.send", return_value=(True, ""))

@@ -1,4 +1,4 @@
-"""Tests for Pydantic models used in wiki-svc."""
+"""Tests for Pydantic models used in athena."""
 import json
 
 import pydantic
@@ -11,11 +11,11 @@ class TestHealthResponse:
     def test_defaults(self):
         resp = HealthResponse()
         assert resp.status == "ok"
-        assert resp.service == "wiki-svc"
+        assert resp.service == "athena"
 
     def test_serialization(self):
         data = json.loads(HealthResponse().model_dump_json())
-        assert data == {"status": "ok", "service": "wiki-svc"}
+        assert data == {"status": "ok", "service": "athena"}
 
 
 class TestCreateArticleRequest:

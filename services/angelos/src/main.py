@@ -19,7 +19,7 @@ from models import CreateMessageRequest, HealthResponse, MessageResponse
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
-setup_logging("messages-svc")
+setup_logging("angelos")
 logger = logging.getLogger(__name__)
 
 # DynamoDB partition key following CA# convention for single-table design
@@ -28,13 +28,13 @@ APP_PARTITION = "CA#ContactSubmission"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting messages-svc...")
+    logger.info("Starting angelos...")
     yield
-    logger.info("Shutting down messages-svc...")
+    logger.info("Shutting down angelos...")
 
 
 app = FastAPI(
-    title="messages-svc",
+    title="angelos",
     description="Website contact form submission microservice",
     version="1.0.0",
     lifespan=lifespan,

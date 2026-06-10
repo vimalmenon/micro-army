@@ -1,4 +1,4 @@
-"""Tests for Pydantic models used in messages-svc."""
+"""Tests for Pydantic models used in angelos."""
 
 import json
 
@@ -12,11 +12,11 @@ class TestHealthResponse:
     def test_defaults(self):
         resp = HealthResponse()
         assert resp.status == "ok"
-        assert resp.service == "messages-svc"
+        assert resp.service == "angelos"
 
     def test_serialization(self):
         data = json.loads(HealthResponse().model_dump_json())
-        assert data == {"status": "ok", "service": "messages-svc"}
+        assert data == {"status": "ok", "service": "angelos"}
 
 
 class TestCreateMessageRequest:

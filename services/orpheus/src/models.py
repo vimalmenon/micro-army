@@ -48,7 +48,7 @@ class ScheduleVideoRequest(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    service: str = "youtube-svc"
+    service: str = "orpheus"
 
 
 class VideoResponse(BaseModel):

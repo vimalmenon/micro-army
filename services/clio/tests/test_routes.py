@@ -11,7 +11,7 @@ class TestHealth:
         resp = client.get("/health")
         assert resp.status_code == status.HTTP_200_OK
         data = resp.json()
-        assert data == {"status": "ok", "service": "dynamo-svc"}
+        assert data == {"status": "ok", "service": "clio"}
 
 
 class TestListTables:
