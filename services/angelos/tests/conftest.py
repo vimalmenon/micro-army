@@ -1,6 +1,7 @@
 """Shared fixtures for angelos tests."""
 
 from collections.abc import Generator
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -10,16 +11,30 @@ from main import app
 
 
 @pytest.fixture
-def mock_dynamo_svc() -> Generator[AsyncMock, None, None]:
-    """Mock httpx.AsyncClient.post so no real HTTP calls are made."""
-    mock_post = AsyncMock()
-    mock_post.return_value.status_code = 200
-    mock_post.return_value.json.return_value = {"item": {}}
+def mock_dynamo_svc() -> Generator[tuple[AsyncMock, AsyncMock, AsyncMock], Any, None]:
+    """Mock httpx.AsyncClient so no real HTTP calls are made."""
+
+    def _make_mock(initial_json=None):
+        m = AsyncMock()
+        m.return_value.status_code = 200
+        m.return_value.text = ""
+        # Use a mutable container so tests can override json return value
+        json_container = {"json_data": initial_json or {"item": {}}}
+        m.return_value.json = lambda: json_container["json_data"]
+        # Allow tests to update the json return value
+        m.set_json = lambda data: json_container.update({"json_data": data})
+        return m
+
+    mock_post = _make_mock()
+    mock_get = _make_mock()
+    mock_put = _make_mock()
 
     with patch("main.httpx.AsyncClient") as mock_client_cls:
         mock_client = mock_client_cls.return_value.__aenter__.return_value
         mock_client.post = mock_post
-        yield mock_post
+        mock_client.get = mock_get
+        mock_client.put = mock_put
+        yield mock_post, mock_get, mock_put
 
 
 @pytest.fixture
