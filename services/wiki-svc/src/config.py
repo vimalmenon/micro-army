@@ -6,12 +6,12 @@ from dataclasses import dataclass, field
 class Settings:
     dynamo_svc_url: str = field(
         default_factory=lambda: os.getenv(
-            "DYNAMO_SVC_URL", "http://dynamo-svc.microservices.svc.cluster.local:8000"
+            "DYNAMO_SVC_URL", "http://clio.microservices.svc.cluster.local:8000"
         )
     )
     s3_svc_url: str = field(
         default_factory=lambda: os.getenv(
-            "S3_SVC_URL", "http://s3-svc.microservices.svc.cluster.local:8000"
+            "S3_SVC_URL", "http://atlas.microservices.svc.cluster.local:8000"
         )
     )
     service_port: int = field(default_factory=lambda: int(os.getenv("SERVICE_PORT", "8000")))
