@@ -1,4 +1,4 @@
-name: Build and Push dynamo-svc
+name: Build and Push clio
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/dynamo-svc
+  IMAGE_NAME: ${{ github.repository }}/clio
 
 jobs:
   shared-test:

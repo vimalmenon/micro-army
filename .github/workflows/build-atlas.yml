@@ -1,4 +1,4 @@
-name: Build and Push messages-svc
+name: Build and Push atlas
 
 on:
   workflow_dispatch:
@@ -6,12 +6,12 @@ on:
     branches: [main]
     paths:
       - "shared/**"
-      - "services/messages-svc/**"
+      - "services/s3-svc/**"
       - ".github/workflows/**"
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/messages-svc
+  IMAGE_NAME: ${{ github.repository }}/atlas
 
 jobs:
   shared-test:
@@ -37,10 +37,11 @@ jobs:
           PYTHONPATH=. python -m pytest tests/ -v --tb=short
 
   test:
+    needs: [shared-test]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/messages-svc
+        working-directory: services/s3-svc
 
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +95,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: services/messages-svc/Dockerfile
+          file: services/s3-svc/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

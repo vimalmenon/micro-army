@@ -1,4 +1,4 @@
-name: Build and Push email-svc
+name: Build and Push angelos
 
 on:
   workflow_dispatch:
@@ -6,12 +6,12 @@ on:
     branches: [main]
     paths:
       - "shared/**"
-      - "services/email-svc/**"
+      - "services/messages-svc/**"
       - ".github/workflows/**"
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/email-svc
+  IMAGE_NAME: ${{ github.repository }}/angelos
 
 jobs:
   shared-test:
@@ -37,11 +37,10 @@ jobs:
           PYTHONPATH=. python -m pytest tests/ -v --tb=short
 
   test:
-    needs: [shared-test]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/email-svc
+        working-directory: services/messages-svc
 
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +94,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: services/email-svc/Dockerfile
+          file: services/messages-svc/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

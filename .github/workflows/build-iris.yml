@@ -1,4 +1,4 @@
-name: Build and Push s3-svc
+name: Build and Push iris
 
 on:
   workflow_dispatch:
@@ -6,12 +6,12 @@ on:
     branches: [main]
     paths:
       - "shared/**"
-      - "services/s3-svc/**"
+      - "services/email-svc/**"
       - ".github/workflows/**"
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/s3-svc
+  IMAGE_NAME: ${{ github.repository }}/iris
 
 jobs:
   shared-test:
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/s3-svc
+        working-directory: services/email-svc
 
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +95,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: services/s3-svc/Dockerfile
+          file: services/email-svc/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
