@@ -357,10 +357,12 @@ def post_comment(video_id: str, text: str) -> bool:
 def get_transcript(video_id: str) -> list[dict[str, Any]]:
     """Get the transcript/captions for a video."""
     try:
-        transcript_list = YouTubeTranscriptApi.fetch(video_id)
+        api = YouTubeTranscriptApi()
+        transcript = api.fetch(video_id)
+        raw = transcript.to_raw_data()
         return [
-            {"text": entry.get("text", ""), "start": entry.get("start", 0), "duration": entry.get("duration", 0)}
-            for entry in transcript_list
+            {"text": entry.get("text", ""), "start": entry.get("start", 0.0), "duration": entry.get("duration", 0.0)}
+            for entry in raw
         ]
     except Exception as e:
         logger.warning("Transcript not available for %s: %s", video_id, e)
