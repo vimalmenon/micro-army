@@ -162,18 +162,36 @@ async def _delete_item(app: str, item_id: str) -> bool:
 
 
 async def _download_s3_to_temp(s3_key: str) -> str:
-    """Download a file from S3 (via atlas) to a temp file and return the path."""
-    # S3 key format: `{key}/{filename}` — atlas uses query params
-    parts = s3_key.split("/", 1)
-    if len(parts) == 2:
+    """Download a file from S3 (via atlas) to a temp file and return the path.
+
+    S3 key format from atlas: ``{prefix}/{key}/{name}`` (e.g. ``videos/mykey/video.mp4``).
+    Atlas internal download uses ``name`` and ``key`` query params separately.
+    """
+    parts = s3_key.split("/")
+    if len(parts) >= 3:
+        name = parts[-1]
+        key = parts[-2]
+    elif len(parts) == 2:
         name = parts[1]
         key = parts[0]
-        params = {"name": name, "key": key}
     else:
         name = parts[0]
         key = None
         params = {"name": name}
+        url = _s3_url("bytes")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url, params=params)
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail=f"S3 key '{s3_key}' not found")
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Failed to download from S3: {resp.status_code}")
+        suffix = os.path.splitext(name)[1] or ".tmp"
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        tmp.write(resp.content)
+        tmp.close()
+        return tmp.name
 
+    params = {"name": name, "key": key}
     url = _s3_url("bytes")
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(url, params=params)
