@@ -13,7 +13,7 @@ from urllib.parse import quote as url_quote
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from config import settings
 from models import CreateMessageRequest, HealthResponse, MessageDeleteResponse, MessageDetail, MessageListResponse, MessageResponse, MessageUpdateResponse
@@ -215,7 +215,34 @@ async def mark_read(message_id: str):
     return MessageUpdateResponse(id=message_id, read=True)
 
 
-# ─── Delete Message ─────────────────────────────
+# ─── Subscribe / Unsubscribe Proxies (→ Iris) ─────
+
+
+@app.post("/subscribe", status_code=201, tags=["subscribers"])
+async def subscribe(req: dict):
+    """Sign up for email updates — proxies to Iris."""
+    iris_url = settings.iris_svc_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(f"{iris_url}/subscribe", json=req)
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.post("/unsubscribe", tags=["subscribers"])
+async def unsubscribe(req: dict):
+    """Unsubscribe from email updates — proxies to Iris."""
+    iris_url = settings.iris_svc_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(f"{iris_url}/unsubscribe", json=req)
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.get("/subscribers", tags=["subscribers"])
+async def list_subscribers():
+    """List all email subscribers — proxies to Iris."""
+    iris_url = settings.iris_svc_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(f"{iris_url}/subscribers")
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
 @app.delete("/messages/{message_id}", response_model=MessageDeleteResponse, tags=["messages"])

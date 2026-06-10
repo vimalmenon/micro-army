@@ -246,3 +246,87 @@ class TestDeleteMessage:
         resp = client.delete("/messages/msg-1")
         assert resp.status_code == 502
         assert "Failed to delete message" in resp.json()["detail"]
+
+
+# ─── Subscriber Proxy Tests ─────────────────────
+
+
+class TestSubscribeProxy:
+    def test_subscribe_new(self, client, mock_dynamo_svc):
+        mock_post, mock_get, _, _ = mock_dynamo_svc
+        # No existing subscriber (GET returns 404)
+        mock_get.return_value.status_code = 404
+        # Successful store (POST returns 201)
+        mock_post.return_value.status_code = 201
+        mock_post.return_value.json = lambda: {
+            "email": "test@example.com",
+            "name": "Test",
+            "silenced": False,
+            "subscribed_at": "2026-06-10T23:00:00",
+            "silenced_at": None,
+        }
+
+        resp = client.post("/subscribe", json={"email": "test@example.com", "name": "Test"})
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["email"] == "test@example.com"
+        assert data["silenced"] is False
+
+class TestUnsubscribeProxy:
+    def test_unsubscribe(self, client, mock_dynamo_svc):
+        mock_post, _, _, _ = mock_dynamo_svc
+        # Angelos proxies POST /unsubscribe → Iris POST /unsubscribe
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json = lambda: {
+            "email": "test@example.com",
+            "name": "Test",
+            "silenced": True,
+            "subscribed_at": "2026-01-01T00:00:00",
+            "silenced_at": "2026-06-10T23:00:00",
+        }
+
+        resp = client.post("/unsubscribe", json={"email": "test@example.com"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["silenced"] is True
+
+    def test_unsubscribe_not_found(self, client, mock_dynamo_svc):
+        mock_post, _, _, _ = mock_dynamo_svc
+        # Iris returns 404 for unknown email
+        mock_post.return_value.status_code = 404
+        mock_post.return_value.json = lambda: {"detail": "Subscriber not found"}
+
+        resp = client.post("/unsubscribe", json={"email": "nonexistent@example.com"})
+        assert resp.status_code == 404
+
+
+class TestListSubscribersProxy:
+    def test_list_subscribers(self, client, mock_dynamo_svc):
+        _, mock_get, _, _ = mock_dynamo_svc
+        # Angelos proxies GET /subscribers → Iris GET /subscribers
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json = lambda: [
+            {
+                "email": "active@example.com",
+                "name": "Active",
+                "silenced": False,
+                "subscribed_at": "2026-01-01T00:00:00",
+                "silenced_at": None,
+            },
+            {
+                "email": "silenced@example.com",
+                "name": "Silenced",
+                "silenced": True,
+                "subscribed_at": "2026-01-01T00:00:00",
+                "silenced_at": "2026-06-01T00:00:00",
+            },
+        ]
+
+        resp = client.get("/subscribers")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["email"] == "active@example.com"
+        assert data[0]["silenced"] is False
+        assert data[1]["email"] == "silenced@example.com"
+        assert data[1]["silenced"] is True
