@@ -25,6 +25,16 @@ function formatTime(iso: string): string {
   return d.toLocaleDateString();
 }
 
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const year = d.getFullYear();
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const day = d.getDate();
+  const hours = d.getHours().toString().padStart(2, '0');
+  const mins = d.getMinutes().toString().padStart(2, '0');
+  return `${month} ${day}, ${year} at ${hours}:${mins}`;
+}
+
 function getAuthHeaders(): Record<string, string> {
   const stored = sessionStorage.getItem('helios_auth');
   if (stored) {
@@ -170,7 +180,10 @@ function MessageDetail({
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">{formatTime(message.created_at)}</span>
+            <span className="text-right text-xs text-gray-500">
+              <div>{formatTime(message.created_at)}</div>
+              <div className="text-gray-600">{formatDate(message.created_at)}</div>
+            </span>
             {!message.read && (
               <button
                 onClick={() => onMarkRead(message.id)}
@@ -343,8 +356,9 @@ export default function App() {
                           </div>
                           <p className="mt-0.5 truncate text-xs text-gray-600">{msg.message}</p>
                         </div>
-                        <span className="shrink-0 text-xs text-gray-600">
-                          {formatTime(msg.created_at)}
+                        <span className="shrink-0 text-right text-xs text-gray-600">
+                          <div>{formatTime(msg.created_at)}</div>
+                          <div className="text-gray-700">{formatDate(msg.created_at)}</div>
                         </span>
                       </button>
                       <button
