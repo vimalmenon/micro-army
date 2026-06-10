@@ -15,7 +15,7 @@ class TestHealth:
 
 class TestSubmitMessage:
     def test_submits_successfully(self, client, mock_dynamo_svc):
-        mock_post, _, _ = mock_dynamo_svc
+        mock_post, _, _, _ = mock_dynamo_svc
         body = {
             "name": "Alice",
             "email": "alice@example.com",
@@ -38,7 +38,7 @@ class TestSubmitMessage:
         assert call_json["email"] == "alice@example.com"
 
     def test_dynamo_svc_error(self, client, mock_dynamo_svc):
-        mock_post, _, _ = mock_dynamo_svc
+        mock_post, _, _, _ = mock_dynamo_svc
         mock_post.return_value.status_code = 500
         mock_post.return_value.text = "Internal Server Error"
 
@@ -77,7 +77,7 @@ class TestSubmitMessage:
 
 class TestListMessages:
     def test_lists_messages(self, client, mock_dynamo_svc):
-        _, mock_get, _ = mock_dynamo_svc
+        _, mock_get, _, _ = mock_dynamo_svc
         items = [
             {
                 "id": "msg-1",
@@ -102,7 +102,7 @@ class TestListMessages:
                 "updated_at": "2026-06-09T12:00:00",
             },
         ]
-        mock_post, _, _ = mock_dynamo_svc
+        mock_post, _, _, _ = mock_dynamo_svc
         mock_post.set_json({"items": items})
 
         resp = client.get("/messages?limit=50")
@@ -113,7 +113,7 @@ class TestListMessages:
         assert data["messages"][1]["name"] == "Bob"
 
     def test_list_empty(self, client, mock_dynamo_svc):
-        mock_post, _, _ = mock_dynamo_svc
+        mock_post, _, _, _ = mock_dynamo_svc
         mock_post.set_json({"items": []})
 
         resp = client.get("/messages")
@@ -123,7 +123,7 @@ class TestListMessages:
         assert data["messages"] == []
 
     def test_list_dynamo_error(self, client, mock_dynamo_svc):
-        mock_post, _, _ = mock_dynamo_svc
+        mock_post, _, _, _ = mock_dynamo_svc
         mock_post.return_value.status_code = 500
         mock_post.return_value.text = "Dynamo error"
 
@@ -134,7 +134,7 @@ class TestListMessages:
 
 class TestGetMessage:
     def test_gets_message(self, client, mock_dynamo_svc):
-        _, mock_get, _ = mock_dynamo_svc
+        _, mock_get, _, _ = mock_dynamo_svc
         mock_get.set_json({
             "item": {
                 "id": "msg-1",
@@ -157,7 +157,7 @@ class TestGetMessage:
         assert data["read"] is False
 
     def test_get_not_found(self, client, mock_dynamo_svc):
-        _, mock_get, _ = mock_dynamo_svc
+        _, mock_get, _, _ = mock_dynamo_svc
         mock_get.return_value.status_code = 404
 
         resp = client.get("/messages/nonexistent")
@@ -165,7 +165,7 @@ class TestGetMessage:
         assert "Message not found" in resp.json()["detail"]
 
     def test_get_dynamo_error(self, client, mock_dynamo_svc):
-        _, mock_get, _ = mock_dynamo_svc
+        _, mock_get, _, _ = mock_dynamo_svc
         mock_get.return_value.status_code = 500
         mock_get.return_value.text = "Upstream error"
 
@@ -176,7 +176,7 @@ class TestGetMessage:
 
 class TestMarkRead:
     def test_marks_read(self, client, mock_dynamo_svc):
-        _, _, mock_put = mock_dynamo_svc
+        _, _, mock_put, _ = mock_dynamo_svc
         mock_put.return_value.json.return_value = {
             "item": {
                 "id": "msg-1",
@@ -199,7 +199,7 @@ class TestMarkRead:
         assert data["status"] == "updated"
 
     def test_mark_read_not_found(self, client, mock_dynamo_svc):
-        _, _, mock_put = mock_dynamo_svc
+        _, _, mock_put, _ = mock_dynamo_svc
         mock_put.return_value.status_code = 404
 
         resp = client.patch("/messages/nonexistent/read")
@@ -207,10 +207,42 @@ class TestMarkRead:
         assert "Message not found" in resp.json()["detail"]
 
     def test_mark_read_dynamo_error(self, client, mock_dynamo_svc):
-        _, _, mock_put = mock_dynamo_svc
+        _, _, mock_put, _ = mock_dynamo_svc
         mock_put.return_value.status_code = 500
         mock_put.return_value.text = "Upstream error"
 
         resp = client.patch("/messages/msg-1/read")
         assert resp.status_code == 502
         assert "Failed to update message" in resp.json()["detail"]
+
+
+class TestDeleteMessage:
+    def test_deletes_message(self, client, mock_dynamo_svc):
+        _, _, _, mock_delete = mock_dynamo_svc
+
+        resp = client.delete("/messages/msg-1")
+        assert resp.status_code == status.HTTP_200_OK
+        data = resp.json()
+        assert data["id"] == "msg-1"
+        assert data["deleted"] is True
+        assert data["status"] == "deleted"
+
+        # Verify the HTTP call was made to dynamo-svc
+        mock_delete.assert_called_once()
+
+    def test_delete_not_found(self, client, mock_dynamo_svc):
+        _, _, _, mock_delete = mock_dynamo_svc
+        mock_delete.return_value.status_code = 404
+
+        resp = client.delete("/messages/nonexistent")
+        assert resp.status_code == 404
+        assert "Message not found" in resp.json()["detail"]
+
+    def test_delete_dynamo_error(self, client, mock_dynamo_svc):
+        _, _, _, mock_delete = mock_dynamo_svc
+        mock_delete.return_value.status_code = 500
+        mock_delete.return_value.text = "Upstream error"
+
+        resp = client.delete("/messages/msg-1")
+        assert resp.status_code == 502
+        assert "Failed to delete message" in resp.json()["detail"]

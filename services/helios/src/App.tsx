@@ -80,7 +80,21 @@ function useMessages() {
     }
   };
 
-  return { messages, loading, error, unreadCount, fetchMessages, markRead };
+  const deleteMessage = async (id: string) => {
+    try {
+      const resp = await fetch(`${API_BASE}/messages/${id}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch (e) {
+      console.error('Failed to delete message', e);
+    }
+  };
+
+  return { messages, loading, error, unreadCount, fetchMessages, markRead, deleteMessage };
 }
 
 function LoginForm({ onLogin }: { onLogin: (user: string, pass: string) => void }) {
@@ -131,10 +145,12 @@ function MessageDetail({
   message,
   onBack,
   onMarkRead,
+  onDelete,
 }: {
   message: Message;
   onBack: () => void;
   onMarkRead: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -163,6 +179,14 @@ function MessageDetail({
                 Mark Read
               </button>
             )}
+            <button
+              onClick={() => {
+                if (window.confirm('Delete this message?')) onDelete(message.id);
+              }}
+              className="rounded-md bg-red-600/20 px-3 py-1 text-xs font-medium text-red-400 transition hover:bg-red-600/30"
+            >
+              Delete
+            </button>
           </div>
         </div>
         <div className="mt-6 whitespace-pre-wrap rounded-lg border border-gray-800 bg-gray-950/50 p-4 text-sm leading-7 text-gray-300">
@@ -176,7 +200,7 @@ function MessageDetail({
 export default function App() {
   const [authed, setAuthed] = useState(() => !!sessionStorage.getItem('helios_auth'));
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { messages, loading, error, unreadCount, fetchMessages, markRead } = useMessages();
+  const { messages, loading, error, unreadCount, fetchMessages, markRead, deleteMessage } = useMessages();
 
   const handleLogin = (user: string, pass: string) => {
     sessionStorage.setItem('helios_auth', JSON.stringify({ user, pass }));
@@ -193,6 +217,11 @@ export default function App() {
   }
 
   const selected = selectedId ? messages.find((m) => m.id === selectedId) : null;
+
+  const handleDelete = (id: string) => {
+    deleteMessage(id);
+    if (selectedId === id) setSelectedId(null);
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -249,6 +278,7 @@ export default function App() {
               markRead(id);
               setSelectedId(null);
             }}
+            onDelete={handleDelete}
           />
         ) : (
           <div className="space-y-6">
@@ -291,29 +321,43 @@ export default function App() {
               ) : (
                 <div className="divide-y divide-gray-800/50">
                   {messages.map((msg) => (
-                    <button
+                    <div
                       key={msg.id}
-                      onClick={() => setSelectedId(msg.id)}
-                      className="flex w-full items-center gap-4 px-5 py-3.5 text-left transition hover:bg-gray-800/40"
+                      className="flex w-full items-center gap-4 px-5 py-3.5 transition hover:bg-gray-800/40"
                     >
-                      <div
-                        className={`h-2 w-2 shrink-0 rounded-full ${
-                          msg.read ? 'bg-transparent' : 'bg-cyan-500'
-                        }`}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-3">
-                          <span className="truncate text-sm font-medium text-gray-200">
-                            {msg.name}
-                          </span>
-                          <span className="truncate text-xs text-gray-500">{msg.subject}</span>
+                      <button
+                        onClick={() => setSelectedId(msg.id)}
+                        className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                      >
+                        <div
+                          className={`h-2 w-2 shrink-0 rounded-full ${
+                            msg.read ? 'bg-transparent' : 'bg-cyan-500'
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-3">
+                            <span className="truncate text-sm font-medium text-gray-200">
+                              {msg.name}
+                            </span>
+                            <span className="truncate text-xs text-gray-500">{msg.subject}</span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-gray-600">{msg.message}</p>
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-gray-600">{msg.message}</p>
-                      </div>
-                      <span className="shrink-0 text-xs text-gray-600">
-                        {formatTime(msg.created_at)}
-                      </span>
-                    </button>
+                        <span className="shrink-0 text-xs text-gray-600">
+                          {formatTime(msg.created_at)}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete message from ${msg.name}?`)) {
+                            handleDelete(msg.id);
+                          }
+                        }}
+                        className="shrink-0 rounded-md bg-red-600/20 px-2.5 py-1 text-xs font-medium text-red-400 transition hover:bg-red-600/30"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}

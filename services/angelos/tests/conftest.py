@@ -11,7 +11,7 @@ from main import app
 
 
 @pytest.fixture
-def mock_dynamo_svc() -> Generator[tuple[AsyncMock, AsyncMock, AsyncMock], Any, None]:
+def mock_dynamo_svc() -> Generator[tuple[AsyncMock, AsyncMock, AsyncMock, AsyncMock], Any, None]:
     """Mock httpx.AsyncClient so no real HTTP calls are made."""
 
     def _make_mock(initial_json=None):
@@ -28,13 +28,15 @@ def mock_dynamo_svc() -> Generator[tuple[AsyncMock, AsyncMock, AsyncMock], Any, 
     mock_post = _make_mock()
     mock_get = _make_mock()
     mock_put = _make_mock()
+    mock_delete = _make_mock()
 
     with patch("main.httpx.AsyncClient") as mock_client_cls:
         mock_client = mock_client_cls.return_value.__aenter__.return_value
         mock_client.post = mock_post
         mock_client.get = mock_get
         mock_client.put = mock_put
-        yield mock_post, mock_get, mock_put
+        mock_client.delete = mock_delete
+        yield mock_post, mock_get, mock_put, mock_delete
 
 
 @pytest.fixture

@@ -39,3 +39,9 @@ class MessageUpdateResponse(BaseModel):
     id: str
     read: bool
     status: str = "updated"
+
+
+class MessageDeleteResponse(BaseModel):
+    id: str
+    deleted: bool = True
+    status: str = "deleted"

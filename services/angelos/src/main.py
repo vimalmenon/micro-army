@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from config import settings
-from models import CreateMessageRequest, HealthResponse, MessageDetail, MessageListResponse, MessageResponse, MessageUpdateResponse
+from models import CreateMessageRequest, HealthResponse, MessageDeleteResponse, MessageDetail, MessageListResponse, MessageResponse, MessageUpdateResponse
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
@@ -49,7 +49,7 @@ app.add_middleware(
         "https://www.completeautomate.com",
         "https://admin.completeautomate.com",
     ],
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
     max_age=600,
 )
@@ -213,3 +213,33 @@ async def mark_read(message_id: str):
         )
 
     return MessageUpdateResponse(id=message_id, read=True)
+
+
+# ─── Delete Message ─────────────────────────────
+
+
+@app.delete("/messages/{message_id}", response_model=MessageDeleteResponse, tags=["messages"])
+async def delete_message(message_id: str):
+    """Delete a contact form message by ID."""
+    dynamo_svc_url = settings.dynamo_svc_url.rstrip("/")
+    encoded_app = url_quote(APP_PARTITION, safe="")
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.delete(
+            f"{dynamo_svc_url}/vimal/item/{encoded_app}",
+            params={"id": message_id},
+        )
+
+    if resp.status_code == 404:
+        raise HTTPException(status_code=404, detail="Message not found")
+    if resp.status_code != 200:
+        logger.error(
+            "dynamo-svc delete returned %s: %s", resp.status_code, resp.text[:200]
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to delete message: upstream returned {resp.status_code}",
+        )
+
+    logger.info("Message deleted: id=%s", message_id)
+    return MessageDeleteResponse(id=message_id)
