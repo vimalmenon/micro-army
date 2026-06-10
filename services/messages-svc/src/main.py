@@ -1,20 +1,17 @@
 """
-Messages microservice — contact form submission + frontend.
+Messages microservice — simple contact form submission for the website.
 
 Posts messages to dynamo-svc's REST API instead of calling DynamoDB directly.
-Serves the contact form at the root URL.
 """
 
 import logging
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.templating import Jinja2Templates
-from starlette.requests import Request
+from fastapi.responses import RedirectResponse
 
 from config import settings
 from models import CreateMessageRequest, HealthResponse, MessageResponse
@@ -26,8 +23,6 @@ logger = logging.getLogger(__name__)
 
 # DynamoDB partition key following CA# convention for single-table design
 APP_PARTITION = "CA#ContactSubmission"
-
-HERE = Path(__file__).parent
 
 
 @asynccontextmanager
@@ -44,9 +39,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ─── Templates (contact form) ───────────────────
-templates = Jinja2Templates(directory=str(HERE / "templates"))
-
 # ─── Prometheus metrics ─────────────────────────
 app.add_middleware(MetricsMiddleware)
 app.add_route("/metrics", metrics_handler, include_in_schema=False)
@@ -56,12 +48,12 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# ─── Root — contact form ────────────────────────
+# ─── Root redirect ──────────────────────────────
 
 
 @app.get("/", include_in_schema=False)
-async def root(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+async def root():
+    return RedirectResponse(url="/docs")
 
 
 # ─── Health ─────────────────────────────────────
