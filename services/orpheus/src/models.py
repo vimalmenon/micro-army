@@ -1,4 +1,4 @@
-"""Pydantic models for youtube-svc — video metadata storage + scheduling."""
+"""Pydantic models for orpheus — video metadata, scheduling, and YouTube Data API."""
 
 from __future__ import annotations
 
@@ -41,6 +41,38 @@ class UpdateVideoRequest(BaseModel):
 class ScheduleVideoRequest(BaseModel):
     """Set the scheduled upload time for a video."""
     scheduled_at: str = Field(..., description="ISO datetime for scheduled upload")
+
+
+# ─── YouTube API request models ─────────────────
+
+
+class YouTubeUploadRequest(BaseModel):
+    """Upload a video to YouTube from an S3 key."""
+    s3_key: str = Field(..., description="S3 key of the video file")
+    title: str = Field(..., min_length=1, max_length=100, description="YouTube video title (max 100 chars)")
+    description: str = Field(default="")
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    category_id: str = Field(default="22")
+    privacy_status: str = Field(default="private", pattern=r"^(public|unlisted|private)$")
+    scheduled_at: str | None = Field(None, description="ISO datetime for scheduled publishing")
+
+
+class YouTubeMetadataUpdateRequest(BaseModel):
+    """Update YouTube video metadata."""
+    title: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = None
+    tags: list[str] | None = Field(None, max_length=50)
+    category_id: str | None = None
+
+
+class YouTubeThumbnailUpdateRequest(BaseModel):
+    """Set a custom thumbnail from an S3 key."""
+    s3_key: str = Field(..., description="S3 key of the thumbnail image")
+
+
+class YouTubeCommentRequest(BaseModel):
+    """Post a comment on a video."""
+    text: str = Field(..., min_length=1, max_length=5000)
 
 
 # ─── Response models ────────────────────────────
@@ -105,3 +137,68 @@ class UploadResponse(BaseModel):
     youtube_id: str = ""
     video_url: str = ""
     message: str = ""
+
+
+# ─── YouTube API response models ────────────────
+
+
+class YouTubeChannelResponse(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    custom_url: str = ""
+    published_at: str = ""
+    country: str = ""
+    thumbnail_url: str = ""
+    subscriber_count: int = 0
+    video_count: int = 0
+    view_count: int = 0
+    privacy_status: str = ""
+
+
+class YouTubeVideoDetail(BaseModel):
+    video_id: str
+    title: str = ""
+    description: str = ""
+    tags: list[str] = []
+    category_id: str = ""
+    published_at: str = ""
+    channel_id: str = ""
+    channel_title: str = ""
+    views: int = 0
+    likes: int = 0
+    comments: int = 0
+    privacy_status: str = ""
+    embeddable: bool = True
+    license: str = ""
+
+
+class YouTubeVideoStats(BaseModel):
+    video_id: str
+    views: int = 0
+    likes: int = 0
+    comments: int = 0
+
+
+class YouTubeVideoListItem(BaseModel):
+    video_id: str
+    title: str = ""
+    description: str = ""
+    published_at: str = ""
+    channel_id: str = ""
+    thumbnails: dict[str, Any] = {}
+
+
+class YouTubePlaylistItem(BaseModel):
+    playlist_id: str
+    title: str = ""
+    description: str = ""
+    item_count: int = 0
+    published_at: str = ""
+    thumbnails: dict[str, Any] = {}
+
+
+class YouTubeTranscriptEntry(BaseModel):
+    text: str
+    start: float = 0.0
+    duration: float = 0.0

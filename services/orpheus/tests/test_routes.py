@@ -1,5 +1,7 @@
 """Tests for orpheus FastAPI routes."""
 
+from unittest.mock import patch
+
 from fastapi import status
 
 # Default video item used in mock responses
@@ -164,30 +166,163 @@ class TestScheduleVideo:
         assert resp.status_code == 400
 
 
-class TestUploadToYouTube:
-    def test_s3_key_missing(self, client, mock_dynamo_transport):
-        resp = client.post("/videos/test-video/upload")
-        assert resp.status_code == 400
-        assert "s3_key" in resp.json()["detail"]
+# ═══════════════════════════════════════════════
+# YouTube Data API endpoint tests
+# ═══════════════════════════════════════════════
 
-    def test_returns_404(self, client, mock_dynamo_transport):
-        mock_dynamo_transport.item_missing = True
-        resp = client.post("/videos/nonexistent/upload")
+MOCK_CHANNEL_INFO = {
+    "id": "UC_test123",
+    "title": "Test Channel",
+    "description": "A test channel",
+    "custom_url": "@testchannel",
+    "published_at": "2020-01-01T00:00:00Z",
+    "country": "US",
+    "thumbnail_url": "https://yt3.googleusercontent.com/test",
+    "subscriber_count": 1000,
+    "video_count": 50,
+    "view_count": 50000,
+    "privacy_status": "public",
+}
+
+MOCK_VIDEO_DETAIL = {
+    "video_id": "abc123",
+    "title": "Test Video",
+    "description": "A test video",
+    "tags": ["test", "demo"],
+    "category_id": "22",
+    "published_at": "2024-01-01T00:00:00Z",
+    "channel_id": "UC_test123",
+    "channel_title": "Test Channel",
+    "views": 5000,
+    "likes": 200,
+    "comments": 50,
+    "privacy_status": "public",
+    "embeddable": True,
+    "license": "youtube",
+}
+
+MOCK_VIDEO_STATS = {
+    "video_id": "abc123",
+    "views": 5000,
+    "likes": 200,
+    "comments": 50,
+}
+
+
+class TestYouTubeChannelInfo:
+    def test_returns_channel_info(self, client):
+        with patch("main.get_channel_info", return_value=MOCK_CHANNEL_INFO):
+            resp = client.get("/youtube/channel/UC_test123")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["id"] == "UC_test123"
+        assert data["title"] == "Test Channel"
+        assert data["subscriber_count"] == 1000
+
+    def test_returns_404(self, client):
+        with patch("main.get_channel_info", side_effect=ValueError("not found")):
+            resp = client.get("/youtube/channel/nonexistent")
         assert resp.status_code == 404
 
-    def test_stub_response_with_s3_key(self, client, mock_dynamo_transport):
-        # Mock a video with s3_key set
-        mock_dynamo_transport.item_response = {
-            "item": {
-                "app": "youtube", "id": "test-video", "title": "Test",
-                "description": "Desc", "tags": [], "category_id": "22",
-                "privacy_status": "private", "status": "draft", "youtube_id": "",
-                "s3_key": "videos/my-video.mp4", "thumbnail_s3_key": "",
-                "scheduled_at": "", "error_message": "",
-                "created_at": "", "updated_at": "",
-            }
-        }
-        resp = client.post("/videos/test-video/upload")
+
+class TestYouTubeChannelVideos:
+    def test_returns_video_list(self, client):
+        mock_videos = [
+            {"video_id": "v1", "title": "Video 1", "description": "Desc 1",
+             "published_at": "2024-01-01T00:00:00Z", "channel_id": "UC_test123",
+             "thumbnails": {}},
+        ]
+        with patch("main.list_channel_videos", return_value=mock_videos):
+            resp = client.get("/youtube/channel/UC_test123/videos")
         assert resp.status_code == 200
-        assert resp.json()["success"] is False
-        assert "YouTube upload endpoint ready" in resp.json()["message"]
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["video_id"] == "v1"
+
+
+class TestYouTubeVideoDetail:
+    def test_returns_video_detail(self, client):
+        with patch("main.get_video_details", return_value=MOCK_VIDEO_DETAIL):
+            resp = client.get("/youtube/video/abc123")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["video_id"] == "abc123"
+        assert data["title"] == "Test Video"
+        assert data["views"] == 5000
+
+    def test_returns_404(self, client):
+        with patch("main.get_video_details", side_effect=ValueError("not found")):
+            resp = client.get("/youtube/video/nonexistent")
+        assert resp.status_code == 404
+
+
+class TestYouTubeVideoStats:
+    def test_returns_stats(self, client):
+        with patch("main.get_video_stats", return_value=MOCK_VIDEO_STATS):
+            resp = client.get("/youtube/video/abc123/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["video_id"] == "abc123"
+        assert data["views"] == 5000
+
+    def test_returns_404(self, client):
+        with patch("main.get_video_stats", side_effect=ValueError("not found")):
+            resp = client.get("/youtube/video/nonexistent/stats")
+        assert resp.status_code == 404
+
+
+class TestYouTubeVideoTranscript:
+    def test_returns_transcript(self, client):
+        mock_transcript = [
+            {"text": "Hello world", "start": 0.0, "duration": 2.5},
+            {"text": "This is a test", "start": 2.5, "duration": 3.0},
+        ]
+        with patch("main.get_transcript", return_value=mock_transcript):
+            resp = client.get("/youtube/video/abc123/transcript")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["text"] == "Hello world"
+
+    def test_empty_transcript(self, client):
+        with patch("main.get_transcript", return_value=[]):
+            resp = client.get("/youtube/video/abc123/transcript")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
+class TestYouTubeUpdateMetadata:
+    def test_updates_metadata(self, client):
+        with patch("main.update_video_metadata", return_value=True):
+            resp = client.patch(
+                "/youtube/video/abc123/metadata",
+                json={"title": "New Title"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+
+    def test_returns_404(self, client):
+        with patch("main.update_video_metadata", side_effect=ValueError("not found")):
+            resp = client.patch(
+                "/youtube/video/nonexistent/metadata",
+                json={"title": "Nope"},
+            )
+        assert resp.status_code == 404
+
+
+class TestYouTubePostComment:
+    def test_posts_comment(self, client):
+        with patch("main.post_comment", return_value=True):
+            resp = client.post(
+                "/youtube/video/abc123/comment",
+                json={"text": "Great video!"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+
+    def test_missing_text(self, client):
+        resp = client.post(
+            "/youtube/video/abc123/comment",
+            json={},
+        )
+        assert resp.status_code == 422

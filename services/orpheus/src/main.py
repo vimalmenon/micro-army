@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
@@ -25,10 +27,33 @@ from models import (
     UploadResponse,
     VideoListResponse,
     VideoResponse,
+    YouTubeChannelResponse,
+    YouTubeCommentRequest,
+    YouTubeMetadataUpdateRequest,
+    YouTubePlaylistItem,
+    YouTubeThumbnailUpdateRequest,
+    YouTubeTranscriptEntry,
+    YouTubeVideoDetail,
+    YouTubeVideoListItem,
+    YouTubeVideoStats,
     _now,
 )
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
+
+# YouTube API integration
+from youtube import (
+    get_channel_info,
+    get_transcript,
+    get_video_details,
+    get_video_stats,
+    list_channel_videos,
+    list_playlists,
+    post_comment,
+    set_video_thumbnail,
+    update_video_metadata,
+    upload_video,
+)
 
 setup_logging("orpheus")
 logger = logging.getLogger(__name__)
@@ -134,6 +159,19 @@ async def _delete_item(app: str, item_id: str) -> bool:
         return True
     except HTTPException:
         return False
+
+
+async def _download_s3_to_temp(s3_key: str) -> str:
+    """Download a file from S3 (via atlas) to a temp file and return the path."""
+    resp = await _call_s3("GET", s3_key)
+    if resp is None:
+        raise HTTPException(status_code=404, detail=f"S3 key '{s3_key}' not found")
+
+    suffix = os.path.splitext(s3_key)[1] or ".tmp"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    tmp.write(resp.content)
+    tmp.close()
+    return tmp.name
 
 
 # ═══════════════════════════════════════════════
@@ -290,9 +328,11 @@ async def schedule_video(video_id: str, body: ScheduleVideoRequest):
 
 @app.post("/videos/{video_id}/upload", response_model=UploadResponse, tags=["youtube"])
 async def upload_to_youtube(video_id: str):
-    """Upload a video to YouTube. Video file must already be in S3."""
-    # This is a stub — YouTube upload logic will be implemented in a dedicated module.
-    # For now, it validates the video exists and has an s3_key set.
+    """Upload a video to YouTube. Video file must already be in S3.
+
+    Downloads the video from S3 (via atlas), then uploads to YouTube via the Data API.
+    The DynamoDB record is automatically updated with the YouTube ID.
+    """
     existing = await _fetch_item(APP_PARTITION, video_id)
     if existing is None:
         raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
@@ -303,9 +343,162 @@ async def upload_to_youtube(video_id: str):
             detail="No video file in S3. Set s3_key first via PUT /videos/{id} or set it on creation.",
         )
 
-    return UploadResponse(
-        success=False,
-        youtube_id="",
-        video_url="",
-        message="YouTube upload endpoint ready — requires YouTube API credentials to be configured.",
-    )
+    try:
+        local_path = await _download_s3_to_temp(existing["s3_key"])
+        result = upload_video(
+            video_path=local_path,
+            title=existing.get("title", "Untitled"),
+            description=existing.get("description", ""),
+            tags=existing.get("tags", []),
+            category_id=existing.get("category_id", "22"),
+            privacy_status=existing.get("privacy_status", "private"),
+            scheduled_at=existing.get("scheduled_at") or None,
+        )
+        os.unlink(local_path)
+
+        # Update DynamoDB record
+        now = _now()
+        existing["youtube_id"] = result["video_id"]
+        existing["status"] = "uploaded"
+        existing["updated_at"] = now
+        await _put_item(existing)
+
+        return UploadResponse(
+            success=True,
+            youtube_id=result["video_id"],
+            video_url=result.get("video_url", f"https://youtu.be/{result['video_id']}"),
+            message=f"Video uploaded: {result.get('title', existing['title'])}",
+        )
+    except Exception as e:
+        logger.error("Upload error for %s: %s", video_id, e)
+        raise HTTPException(status_code=502, detail=f"Upload failed: {str(e)[:200]}")
+
+
+# ═══════════════════════════════════════════════
+# Routes — YouTube Data API
+# ═══════════════════════════════════════════════
+
+
+@app.get("/youtube/channel/{channel_id}", response_model=YouTubeChannelResponse, tags=["youtube"])
+async def youtube_channel_info(channel_id: str):
+    """Get detailed information about a YouTube channel."""
+    try:
+        info = get_channel_info(channel_id)
+        return YouTubeChannelResponse(**info)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Channel info error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")
+
+
+@app.get("/youtube/channel/{channel_id}/videos", response_model=list[YouTubeVideoListItem], tags=["youtube"])
+async def youtube_channel_videos(channel_id: str, max_results: int = 50):
+    """List all videos from a channel."""
+    try:
+        videos = list_channel_videos(channel_id, max_results=min(max_results, 200))
+        return [YouTubeVideoListItem(**v) for v in videos]
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Channel videos error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")
+
+
+@app.get("/youtube/channel/{channel_id}/playlists", response_model=list[YouTubePlaylistItem], tags=["youtube"])
+async def youtube_channel_playlists(channel_id: str, max_results: int = 50):
+    """List all playlists from a channel."""
+    try:
+        playlists = list_playlists(channel_id, max_results=min(max_results, 200))
+        return [YouTubePlaylistItem(**p) for p in playlists]
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Playlist list error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")
+
+
+@app.get("/youtube/video/{video_id}", response_model=YouTubeVideoDetail, tags=["youtube"])
+async def youtube_video_detail(video_id: str):
+    """Get detailed information about a specific YouTube video."""
+    try:
+        detail = get_video_details(video_id)
+        return YouTubeVideoDetail(**detail)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Video detail error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")
+
+
+@app.get("/youtube/video/{video_id}/stats", response_model=YouTubeVideoStats, tags=["youtube"])
+async def youtube_video_stats(video_id: str):
+    """Get statistics for a video (views, likes, comments)."""
+    try:
+        stats = get_video_stats(video_id)
+        return YouTubeVideoStats(**stats)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Video stats error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")
+
+
+@app.get("/youtube/video/{video_id}/transcript", response_model=list[YouTubeTranscriptEntry], tags=["youtube"])
+async def youtube_video_transcript(video_id: str):
+    """Get the transcript/captions for a video."""
+    try:
+        entries = get_transcript(video_id)
+        return [YouTubeTranscriptEntry(**e) for e in entries]
+    except Exception as e:
+        logger.warning("Transcript error for %s: %s", video_id, e)
+        return []
+
+
+@app.patch("/youtube/video/{video_id}/metadata", tags=["youtube"])
+async def youtube_update_metadata(video_id: str, body: YouTubeMetadataUpdateRequest):
+    """Update a video's title, description, tags, or category on YouTube."""
+    try:
+        result = update_video_metadata(
+            video_id=video_id,
+            title=body.title,
+            description=body.description,
+            tags=body.tags,
+            category_id=body.category_id,
+        )
+        return {"success": result, "video_id": video_id}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Metadata update error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")
+
+
+@app.post("/youtube/video/{video_id}/thumbnail", tags=["youtube"])
+async def youtube_set_thumbnail(video_id: str, body: YouTubeThumbnailUpdateRequest):
+    """Set a custom thumbnail for a video. The image file must already be in S3."""
+    try:
+        local_path = await _download_s3_to_temp(body.s3_key)
+        try:
+            result = set_video_thumbnail(video_id, local_path)
+            return {"success": result, "video_id": video_id}
+        finally:
+            os.unlink(local_path)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Thumbnail set error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")
+
+
+@app.post("/youtube/video/{video_id}/comment", tags=["youtube"])
+async def youtube_post_comment(video_id: str, body: YouTubeCommentRequest):
+    """Post a top-level comment on a video."""
+    try:
+        result = post_comment(video_id, body.text)
+        return {"success": result, "video_id": video_id}
+    except Exception as e:
+        logger.error("Comment post error: %s", e)
+        raise HTTPException(status_code=502, detail=f"YouTube API error: {str(e)}")

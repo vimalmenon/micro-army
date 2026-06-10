@@ -1,4 +1,4 @@
-"""youtube-svc configuration — YouTube Data API + cluster service URLs."""
+"""orpheus configuration — YouTube Data API + cluster service URLs."""
 
 import os
 from dataclasses import dataclass, field
@@ -30,7 +30,7 @@ class Settings:
     default_category_id: str = field(default_factory=lambda: os.getenv("DEFAULT_CATEGORY_ID", "22"))
 
     # Max video file size: 100 GB (YouTube limit for verified)
-    max_video_size: int = field(default_factory=lambda: int(os.getenv("MAX_VIDEO_SIZE", "107_374_182_400")))
+    max_video_size: int = field(default_factory=lambda: int(os.getenv("MAX_VIDEO_SIZE", "107374182400")))
 
 
 settings = Settings()
