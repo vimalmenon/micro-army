@@ -47,6 +47,7 @@ app.add_middleware(
     allow_origins=[
         "https://completeautomate.com",
         "https://www.completeautomate.com",
+        "https://admin.completeautomate.com",
     ],
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
