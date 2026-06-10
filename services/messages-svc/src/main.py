@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from config import settings
@@ -37,6 +38,18 @@ app = FastAPI(
     description="Website contact form submission microservice",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# ─── CORS (public contact form on completeautomate.com) ───
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://completeautomate.com",
+        "https://www.completeautomate.com",
+    ],
+    allow_methods=["POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+    max_age=600,
 )
 
 # ─── Prometheus metrics ─────────────────────────
