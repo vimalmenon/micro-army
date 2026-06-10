@@ -1,9 +1,9 @@
 # Build stage
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package.json ./
+COPY services/helios/package.json ./
 RUN npm install
-COPY . .
+COPY services/helios/ .
 RUN npm run build
 
 # Serve stage
