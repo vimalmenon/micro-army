@@ -90,16 +90,20 @@ def cfg():
 # ---------------------------------------------------------------------------
 @patch.dict(os.environ, clear=True)
 def test_load_config_requires_token():
-    """Missing CLOUDFLARE_API_TOKEN should raise KeyError."""
+    """Missing required env vars should raise SystemExit."""
     from src.tunnel_sync import load_config as lc
 
-    with pytest.raises(KeyError):
+    with pytest.raises(SystemExit, match="CLOUDFLARE_API_TOKEN"):
         lc()
 
 
-@patch.dict(os.environ, {"CLOUDFLARE_API_TOKEN": "my-token"}, clear=True)
+@patch.dict(os.environ, {
+    "CLOUDFLARE_API_TOKEN": "my-token",
+    "CF_ACCOUNT_ID": "CF_ACCOUNT_ID_PLACEHOLDER",
+    "CF_TUNNEL_ID": "CF_TUNNEL_ID_PLACEHOLDER",
+}, clear=True)
 def test_load_config_minimal():
-    """Should use defaults for optional env vars."""
+    """Should read env vars and use defaults for optional ones."""
     from src.tunnel_sync import load_config as lc
 
     result = lc()
@@ -107,6 +111,7 @@ def test_load_config_minimal():
     assert result["account_id"] == "CF_ACCOUNT_ID_PLACEHOLDER"
     assert result["tunnel_id"] == "CF_TUNNEL_ID_PLACEHOLDER"
     assert result["backend"] == "http://192.168.128.200"
+    assert result["host_suffix"] == ".completeautomate.com"
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +145,7 @@ def test_get_k3s_ingress_hostnames_kubectl_error(mock_run):
         args=[], returncode=1, stdout="", stderr="connection refused",
     )
     with pytest.raises(RuntimeError, match="kubectl failed"):
-        get_k3s_ingress_hostnames()
+        get_k3s_ingress_hostnames(".completeautomate.com")
 
 
 # ---------------------------------------------------------------------------

@@ -21,26 +21,27 @@ import requests
 
 log = logging.getLogger("tunnel-sync")
 
-# --- Constants ---
-CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4"
-DEFAULT_TUNNEL_ID = "CF_TUNNEL_ID_PLACEHOLDER"
-DEFAULT_ACCOUNT_ID = "CF_ACCOUNT_ID_PLACEHOLDER"
-DEFAULT_BACKEND = "http://192.168.128.200"
-INGRESS_HOST_SUFFIX = ".completeautomate.com"
-
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 def load_config() -> dict:
-    """Load config from environment variables (or defaults for homelab)."""
-    return {
-        "api_token": os.environ["CLOUDFLARE_API_TOKEN"],
-        "account_id": os.environ.get("CF_ACCOUNT_ID", DEFAULT_ACCOUNT_ID),
-        "tunnel_id": os.environ.get("CF_TUNNEL_ID", DEFAULT_TUNNEL_ID),
-        "backend": os.environ.get("TUNNEL_BACKEND", DEFAULT_BACKEND),
-        "host_suffix": os.environ.get("HOST_SUFFIX", INGRESS_HOST_SUFFIX),
+    """Load config from environment variables (all required)."""
+    required = {
+        "api_token": "CLOUDFLARE_API_TOKEN",
+        "account_id": "CF_ACCOUNT_ID",
+        "tunnel_id": "CF_TUNNEL_ID",
     }
+    cfg = {}
+    for key, env_var in required.items():
+        val = os.environ.get(env_var)
+        if not val:
+            log.error("Missing required env var: %s", env_var)
+            raise SystemExit(f"ERROR: {env_var} is required but not set")
+        cfg[key] = val
+
+    cfg["backend"] = os.environ.get("TUNNEL_BACKEND", "http://192.168.128.200")
+    cfg["host_suffix"] = os.environ.get("HOST_SUFFIX", ".completeautomate.com")
+    return cfg
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +57,7 @@ def _cf_headers(token: str) -> dict:
 def get_tunnel_config(cfg: dict) -> dict:
     """Fetch the current tunnel ingress config from Cloudflare."""
     url = (
-        f"{CLOUDFLARE_API_BASE}/accounts/{cfg['account_id']}"
+        f"https://api.cloudflare.com/client/v4/accounts/{cfg['account_id']}"
         f"/cfd_tunnel/{cfg['tunnel_id']}/configurations"
     )
     resp = requests.get(url, headers=_cf_headers(cfg["api_token"]), timeout=30)
@@ -70,7 +71,7 @@ def get_tunnel_config(cfg: dict) -> dict:
 def put_tunnel_config(cfg: dict, ingress: list[dict], version: int) -> dict:
     """Push updated tunnel ingress config to Cloudflare."""
     url = (
-        f"{CLOUDFLARE_API_BASE}/accounts/{cfg['account_id']}"
+        f"https://api.cloudflare.com/client/v4/accounts/{cfg['account_id']}"
         f"/cfd_tunnel/{cfg['tunnel_id']}/configurations"
     )
     body = {"config": {"ingress": ingress, "warp-routing": {"enabled": False}}}
@@ -90,7 +91,7 @@ def put_tunnel_config(cfg: dict, ingress: list[dict], version: int) -> dict:
 # ---------------------------------------------------------------------------
 # k3s ingress discovery
 # ---------------------------------------------------------------------------
-def get_k3s_ingress_hostnames(suffix: str = INGRESS_HOST_SUFFIX) -> set[str]:
+def get_k3s_ingress_hostnames(suffix: str) -> set[str]:
     """Run kubectl and return all Ingress hostnames matching the suffix."""
     result = subprocess.run(
         ["kubectl", "get", "ingress", "-A", "-o", "json"],
