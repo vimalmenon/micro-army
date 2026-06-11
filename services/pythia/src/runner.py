@@ -69,8 +69,9 @@ async def run_pipeline() -> dict:
         else:
             stats["errors"] += 1
 
-    # Step 4: Categorize
-    hot, warm = categorize_leads(leads)
+    # Step 4: Categorize (only active new leads)
+    active_leads = [l for l in leads if l.status == "new"]
+    hot, warm = categorize_leads(active_leads)
     stats["hot"] = len(hot)
     stats["warm"] = len(warm)
     stats["cold"] = stats["scanned"] - stats["scored"]

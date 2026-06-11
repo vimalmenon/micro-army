@@ -57,6 +57,11 @@ class ScoredLeadResponse(BaseModel):
     seen_at: str
 
 
+class LeadStatusUpdate(BaseModel):
+    """Request body for updating a lead's status."""
+    status: str
+
+
 class DigestMessage(BaseModel):
     """Formatted Telegram digest."""
     text: str

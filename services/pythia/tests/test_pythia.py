@@ -40,6 +40,63 @@ class TestHealth:
         assert h.service == "pythia"
 
 
+# ── API endpoints (TestClient) ────────────────────────────────────────────────
+
+
+class TestAPI:
+    """Integration-style tests for FastAPI endpoints using TestClient."""
+
+    @pytest.fixture(autouse=True)
+    def mock_store_deps(self):
+        """Mock store layer so PATCH /leads doesn't call Clio."""
+        with patch("src.main.update_lead_status") as mock_update:
+            yield {"update_lead_status": mock_update}
+
+    def test_patch_lead_status_success(self, mock_store_deps):
+        """PATCH /leads/{id} with valid status returns success."""
+        from src.main import app
+        from fastapi.testclient import TestClient
+
+        mock_store_deps["update_lead_status"].return_value = True
+
+        client = TestClient(app)
+        resp = client.patch("/leads/abc123", json={"status": "not_interested"})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert body["lead_id"] == "abc123"
+        assert body["status"] == "not_interested"
+
+    def test_patch_lead_status_not_found(self, mock_store_deps):
+        """PATCH returns error when lead not found."""
+        from src.main import app
+        from fastapi.testclient import TestClient
+
+        mock_store_deps["update_lead_status"].return_value = False
+
+        client = TestClient(app)
+        resp = client.patch("/leads/abc123", json={"status": "not_interested"})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert "error" in body
+
+    def test_patch_lead_contacted_status(self, mock_store_deps):
+        """PATCH /leads/{id} with contacted status works."""
+        from src.main import app
+        from fastapi.testclient import TestClient
+
+        mock_store_deps["update_lead_status"].return_value = True
+
+        client = TestClient(app)
+        resp = client.patch("/leads/lead456", json={"status": "contacted"})
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "contacted"
+
+
 # ── Scorer (mocked LLM API) ───────────────────────────────────────────────────
 
 
@@ -923,3 +980,36 @@ class TestRunner:
         assert stats["scored"] == 2
         assert stats["new_leads"] == 0
         assert stats["errors"] == 2  # both store attempts failed
+
+    async def test_pipeline_filters_non_new_leads(self, mock_all_deps, mock_collector):
+        """Leads with status != 'new' are excluded from digest categorization."""
+        from src.runner import run_pipeline
+        from src.models import ScoredLead
+
+        mock_all_deps["get_all_collectors"].return_value = [mock_collector]
+        mock_all_deps["lead_exists"].return_value = False
+        mock_all_deps["score_items"].return_value = [
+            ScoredLead(
+                id="interested", source="test", url="https://x.com/a",
+                title="Active", body="test",
+                company="ActiveCo", score=9,
+                pain_point="x", fit_reason="y", angle="z",
+                urgency="high", status="new",  # should be counted
+            ),
+            ScoredLead(
+                id="not_interested", source="test", url="https://x.com/b",
+                title="Gone", body="test",
+                company="DeadCo", score=6,
+                pain_point="x", fit_reason="y", angle="z",
+                urgency="low", status="not_interested",  # should be excluded
+            ),
+        ]
+        mock_all_deps["store_lead"].return_value = True
+
+        stats = await run_pipeline()
+
+        assert stats["scanned"] == 1
+        assert stats["scored"] == 2
+        assert stats["new_leads"] == 2  # both stored
+        assert stats["hot"] == 1     # only the 'new' one (score 9)
+        assert stats["warm"] == 0    # the 'not_interested' one excluded
