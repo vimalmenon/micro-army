@@ -1,6 +1,7 @@
 """LLM lead scorer — evaluates raw items and extracts structured lead data."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -112,10 +113,12 @@ async def score_item(item: RawItem) -> Optional[ScoredLead]:
 
 
 async def score_items(items: list[RawItem]) -> list[ScoredLead]:
-    """Score multiple items, returning only those scoring 5+."""
-    leads: list[ScoredLead] = []
-    for item in items:
-        lead = await score_item(item)
-        if lead and lead.score >= 5:
-            leads.append(lead)
-    return leads
+    """Score multiple items in parallel (10 at a time via semaphore)."""
+    sem = asyncio.Semaphore(10)
+
+    async def _scored(item: RawItem) -> Optional[ScoredLead]:
+        async with sem:
+            return await score_item(item)
+
+    results = await asyncio.gather(*[_scored(item) for item in items])
+    return [lead for lead in results if lead and lead.score >= 5]
