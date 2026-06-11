@@ -35,15 +35,6 @@ function formatDate(iso: string): string {
   return `${month} ${day}, ${year} at ${hours}:${mins}`;
 }
 
-function getAuthHeaders(): Record<string, string> {
-  const stored = sessionStorage.getItem('helios_auth');
-  if (stored) {
-    const parsed = JSON.parse(stored);
-    return { Authorization: `Basic ${btoa(`${parsed.user}:${parsed.pass}`)}` };
-  }
-  return {};
-}
-
 function useMessages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,13 +46,8 @@ function useMessages() {
     setError(null);
     try {
       const resp = await fetch(`${API_BASE}/messages`, {
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
-      if (resp.status === 401 || resp.status === 403) {
-        setError('auth');
-        setLoading(false);
-        return;
-      }
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setMessages(data.messages);
@@ -78,7 +64,7 @@ function useMessages() {
     try {
       const resp = await fetch(`${API_BASE}/messages/${id}/read`, {
         method: 'PATCH',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setMessages((prev) =>
@@ -94,7 +80,7 @@ function useMessages() {
     try {
       const resp = await fetch(`${API_BASE}/messages/${id}`, {
         method: 'DELETE',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setMessages((prev) => prev.filter((m) => m.id !== id));
@@ -105,50 +91,6 @@ function useMessages() {
   };
 
   return { messages, loading, error, unreadCount, fetchMessages, markRead, deleteMessage };
-}
-
-function LoginForm({ onLogin }: { onLogin: (user: string, pass: string) => void }) {
-  const [user, setUser] = useState('');
-  const [pass, setPass] = useState('');
-
-  return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-900/80 p-8 backdrop-blur">
-        <div className="mb-6 text-center">
-          <div className="text-4xl">☀️</div>
-          <h1 className="mt-3 text-xl font-bold">Helios</h1>
-          <p className="mt-1 text-sm text-gray-400">Admin Dashboard</p>
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onLogin(user, pass);
-          }}
-          className="space-y-4"
-        >
-          <input
-            className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 outline-none focus:border-cyan-500"
-            placeholder="Username"
-            value={user}
-            onChange={(e) => setUser(e.target.value)}
-          />
-          <input
-            className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 outline-none focus:border-cyan-500"
-            type="password"
-            placeholder="Password"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-500"
-          >
-            Sign In
-          </button>
-        </form>
-      </div>
-    </div>
-  );
 }
 
 function MessageDetail({
@@ -168,7 +110,7 @@ function MessageDetail({
         onClick={onBack}
         className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-gray-200"
       >
-        ← Back to Messages
+        ← Messages
       </button>
 
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
@@ -211,23 +153,8 @@ function MessageDetail({
 }
 
 export default function App() {
-  const [authed, setAuthed] = useState(() => !!sessionStorage.getItem('helios_auth'));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { messages, loading, error, unreadCount, fetchMessages, markRead, deleteMessage } = useMessages();
-
-  const handleLogin = (user: string, pass: string) => {
-    sessionStorage.setItem('helios_auth', JSON.stringify({ user, pass }));
-    setAuthed(true);
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('helios_auth');
-    setAuthed(false);
-  };
-
-  if (!authed || error === 'auth') {
-    return <LoginForm onLogin={handleLogin} />;
-  }
 
   const selected = selectedId ? messages.find((m) => m.id === selectedId) : null;
 
@@ -271,14 +198,6 @@ export default function App() {
             )}
           </button>
         </nav>
-        <div className="mt-auto">
-          <button
-            onClick={handleLogout}
-            className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-500 transition hover:text-gray-300"
-          >
-            Sign Out
-          </button>
-        </div>
       </aside>
 
       {/* Main */}
