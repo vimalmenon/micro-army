@@ -14,6 +14,7 @@ from enricher import enrich_leads
 from scorer import score_items
 from store import lead_exists, list_leads, store_lead
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -66,7 +67,11 @@ async def run_pipeline() -> dict:
     leads = await enrich_leads(leads)
     stats["enriched"] = sum(1 for l in leads if l.enriched_at is not None)
 
-    # Step 4: Store
+    # Step 4: Store (max 1000 leads per run)
+    MAX_LEADS = 1000
+    if len(leads) > MAX_LEADS:
+        logger.warning("Capping leads from %d to %d (safety limit)", len(leads), MAX_LEADS)
+        leads = leads[:MAX_LEADS]
     for lead in leads:
         success = await store_lead(lead)
         if success:
