@@ -1,3 +1,4 @@
+"""Pythia models — lead data with enrichment and state workflow."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -24,8 +25,14 @@ class RawItem(BaseModel):
     collected_at: str = ""
 
 
+class StateTransition(BaseModel):
+    """A single state transition in the lead's history."""
+    state: str
+    at: str
+
+
 class ScoredLead(BaseModel):
-    """A lead after LLM scoring, ready for storage."""
+    """A lead after LLM scoring and optional enrichment, ready for storage."""
     id: str
     source: str
     url: str
@@ -37,8 +44,24 @@ class ScoredLead(BaseModel):
     fit_reason: str = ""
     angle: str = ""
     urgency: str = "low"
-    status: str = "new"
+    state: str = "discovery"
     seen_at: str = ""
+
+    # Enrichment fields (populated by enricher)
+    website: Optional[str] = None
+    linkedin: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    recent_news: list[str] = []
+    tech_stack: list[str] = []
+    funding: Optional[str] = None
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
+    budget_confidence: Optional[str] = None
+    enriched_at: Optional[str] = None
+
+    # State workflow
+    history: list[StateTransition] = []
 
 
 class ScoredLeadResponse(BaseModel):
@@ -53,13 +76,25 @@ class ScoredLeadResponse(BaseModel):
     fit_reason: str
     angle: str
     urgency: str
-    status: str
+    state: str
     seen_at: str
+    website: Optional[str] = None
+    linkedin: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    recent_news: list[str] = []
+    tech_stack: list[str] = []
+    funding: Optional[str] = None
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
+    budget_confidence: Optional[str] = None
+    enriched_at: Optional[str] = None
+    history: list[StateTransition] = []
 
 
-class LeadStatusUpdate(BaseModel):
-    """Request body for updating a lead's status."""
-    status: str
+class LeadStateUpdate(BaseModel):
+    """Request body for updating a lead's state."""
+    state: str
 
 
 class DigestMessage(BaseModel):

@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
 
 from config import settings
-from models import RawItem, ScoredLead
+from models import RawItem, ScoredLead, StateTransition
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +105,9 @@ async def score_item(item: RawItem) -> Optional[ScoredLead]:
         fit_reason=data.get("fit_reason", ""),
         angle=data.get("angle", ""),
         urgency=data.get("urgency", "low"),
-        status="new",
+        state=data.get("status", "discovery"),
         seen_at=item.collected_at,
+        history=[StateTransition(state=data.get("status", "discovery"), at=item.collected_at or datetime.now(timezone.utc).isoformat())],
     )
 
 

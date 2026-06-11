@@ -7,9 +7,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from config import settings
-from models import HealthResponse, LeadStatusUpdate
+from models import HealthResponse, LeadStateUpdate
 from runner import run_pipeline
-from store import update_lead_status
+from store import update_lead_state
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("pythia")
@@ -24,8 +24,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="pythia",
-    description="Lead building oracle — collect, score, and surface business leads",
-    version="1.0.0",
+    description="Lead oracle — collect, score, enrich, and manage business leads",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -43,9 +43,10 @@ async def run():
 
 
 @app.patch("/leads/{lead_id}")
-async def update_status(lead_id: str, body: LeadStatusUpdate):
-    """Update a lead's status (e.g. contacted, not_interested, qualified)."""
-    success = await update_lead_status(lead_id, body.status)
+async def update_state(lead_id: str, body: LeadStateUpdate):
+    """Update a lead's state (e.g. contacted, qualified, won, not_interested).
+    Appends the transition to the lead's history automatically."""
+    success = await update_lead_state(lead_id, body.state)
     if not success:
         return {"success": False, "error": "Lead not found or update failed"}
-    return {"success": True, "lead_id": lead_id, "status": body.status}
+    return {"success": True, "lead_id": lead_id, "state": body.state}

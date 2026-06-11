@@ -1,4 +1,4 @@
-"""Telegram digest formatter — turns scored leads into a daily report."""
+"""Telegram digest formatter — turns scored leads into a daily report with enrichment."""
 from __future__ import annotations
 
 from models import ScoredLead
@@ -26,6 +26,31 @@ def format_telegram_digest(
                 lines.append(f"   Pain: {lead.pain_point}")
             if lead.angle:
                 lines.append(f"   Angle: {lead.angle}")
+
+            # Enrichment block
+            enrich_parts = []
+            if lead.website:
+                enrich_parts.append(f"\U0001f310 {lead.website}")
+            if lead.linkedin:
+                enrich_parts.append(f"\U0001f4bc {lead.linkedin}")
+            if lead.contact_name:
+                enrich_parts.append(f"\U0001f464 {lead.contact_name}")
+            if lead.contact_email:
+                enrich_parts.append(f"\U0001f4e7 {lead.contact_email}")
+            if lead.funding:
+                enrich_parts.append(f"\U0001f4b0 {lead.funding}")
+            if lead.recent_news:
+                for news in lead.recent_news[:2]:
+                    enrich_parts.append(f"\U0001f4f0 {news}")
+            if lead.budget_min is not None or lead.budget_max is not None:
+                budget_str = f"Budget: ${lead.budget_min:,}-${lead.budget_max:,}" if lead.budget_min and lead.budget_max else f"Budget: ~${(lead.budget_max or lead.budget_min or 0):,}"
+                if lead.budget_confidence:
+                    budget_str += f" ({lead.budget_confidence})"
+                enrich_parts.append(f"\U0001f4b8 {budget_str}")
+
+            if enrich_parts:
+                lines.append(f"   {'  '.join(enrich_parts[:4])}")
+
             lines.append(f"   [{lead.source}]({lead.url})")
             lines.append("")
     else:
@@ -39,6 +64,10 @@ def format_telegram_digest(
         for i, lead in enumerate(warm, 1):
             lines.append(f"*{i}. {lead.company or 'Unknown'}*")
             lines.append(f"   Score: {lead.score} | Pain: {lead.pain_point or 'N/A'}")
+            if lead.website:
+                lines.append(f"   \U0001f310 {lead.website}")
+            if lead.contact_email:
+                lines.append(f"   \U0001f4e7 {lead.contact_email}")
             lines.append(f"   [{lead.source}]({lead.url})")
             lines.append("")
     else:

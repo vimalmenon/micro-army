@@ -1,4 +1,4 @@
-"""Runner — orchestrates collect → score → store → deliver."""
+"""Runner — orchestrates collect → score → enrich → store → digest."""
 from __future__ import annotations
 
 import json
@@ -10,6 +10,7 @@ import httpx
 from collectors import get_all_collectors
 from config import settings
 from digest import categorize_leads, format_telegram_digest
+from enricher import enrich_leads
 from scorer import score_items
 from store import lead_exists, list_leads, store_lead
 
@@ -21,6 +22,7 @@ async def run_pipeline() -> dict:
     stats = {
         "scanned": 0,
         "scored": 0,
+        "enriched": 0,
         "new_leads": 0,
         "hot": 0,
         "warm": 0,
@@ -34,7 +36,6 @@ async def run_pipeline() -> dict:
     for collector in collectors:
         try:
             items = await collector.collect()
-            # Filter out already-seen items
             new_items = []
             for item in items:
                 if await lead_exists(item.url, item.source):
@@ -61,7 +62,11 @@ async def run_pipeline() -> dict:
         logger.info("No leads scored 5+")
         return stats
 
-    # Step 3: Store
+    # Step 3: Enrich (hot leads only, 4-round eval loop)
+    leads = await enrich_leads(leads)
+    stats["enriched"] = sum(1 for l in leads if l.enriched_at is not None)
+
+    # Step 4: Store
     for lead in leads:
         success = await store_lead(lead)
         if success:
@@ -69,14 +74,14 @@ async def run_pipeline() -> dict:
         else:
             stats["errors"] += 1
 
-    # Step 4: Categorize (only active new leads)
-    active_leads = [l for l in leads if l.status == "new"]
+    # Step 5: Categorize (only active discovery leads)
+    active_leads = [l for l in leads if l.state == "discovery"]
     hot, warm = categorize_leads(active_leads)
     stats["hot"] = len(hot)
     stats["warm"] = len(warm)
     stats["cold"] = stats["scanned"] - stats["scored"]
 
-    # Step 5: Send digest
+    # Step 6: Send digest
     if hot or warm:
         await send_digest(hot, warm, stats)
 
@@ -92,7 +97,6 @@ async def send_digest(hot: list, warm: list, stats: dict) -> bool:
         cold_count=stats["cold"],
     )
 
-    # Try direct Telegram API first
     if settings.telegram_bot_token and settings.telegram_chat_id:
         try:
             async with httpx.AsyncClient(timeout=15) as client:
@@ -113,7 +117,6 @@ async def send_digest(hot: list, warm: list, stats: dict) -> bool:
         except Exception as e:
             logger.warning("Failed to send Telegram: %s", e)
 
-    # Fallback: print the digest (for Hermes cron delivery)
     print("=== LEAD DIGEST ===")
     print(text)
     return True

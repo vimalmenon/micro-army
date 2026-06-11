@@ -49,52 +49,52 @@ class TestAPI:
     @pytest.fixture(autouse=True)
     def mock_store_deps(self):
         """Mock store layer so PATCH /leads doesn't call Clio."""
-        with patch("src.main.update_lead_status") as mock_update:
-            yield {"update_lead_status": mock_update}
+        with patch("src.main.update_lead_state") as mock_update:
+            yield {"update_lead_state": mock_update}
 
-    def test_patch_lead_status_success(self, mock_store_deps):
-        """PATCH /leads/{id} with valid status returns success."""
+    def test_patch_lead_state_success(self, mock_store_deps):
+        """PATCH /leads/{id} with valid state returns success."""
         from src.main import app
         from fastapi.testclient import TestClient
 
-        mock_store_deps["update_lead_status"].return_value = True
+        mock_store_deps["update_lead_state"].return_value = True
 
         client = TestClient(app)
-        resp = client.patch("/leads/abc123", json={"status": "not_interested"})
+        resp = client.patch("/leads/abc123", json={"state": "contacted"})
 
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is True
         assert body["lead_id"] == "abc123"
-        assert body["status"] == "not_interested"
+        assert body["state"] == "contacted"
 
-    def test_patch_lead_status_not_found(self, mock_store_deps):
+    def test_patch_lead_state_not_found(self, mock_store_deps):
         """PATCH returns error when lead not found."""
         from src.main import app
         from fastapi.testclient import TestClient
 
-        mock_store_deps["update_lead_status"].return_value = False
+        mock_store_deps["update_lead_state"].return_value = False
 
         client = TestClient(app)
-        resp = client.patch("/leads/abc123", json={"status": "not_interested"})
+        resp = client.patch("/leads/abc123", json={"state": "contacted"})
 
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is False
         assert "error" in body
 
-    def test_patch_lead_contacted_status(self, mock_store_deps):
-        """PATCH /leads/{id} with contacted status works."""
+    def test_patch_lead_state_contacted(self, mock_store_deps):
+        """PATCH /leads/{id} with contacted state works."""
         from src.main import app
         from fastapi.testclient import TestClient
 
-        mock_store_deps["update_lead_status"].return_value = True
+        mock_store_deps["update_lead_state"].return_value = True
 
         client = TestClient(app)
-        resp = client.patch("/leads/lead456", json={"status": "contacted"})
+        resp = client.patch("/leads/lead456", json={"state": "contacted"})
 
         assert resp.status_code == 200
-        assert resp.json()["status"] == "contacted"
+        assert resp.json()["state"] == "contacted"
 
 
 # ── Scorer (mocked LLM API) ───────────────────────────────────────────────────
@@ -157,7 +157,7 @@ class TestScorer:
         assert lead.urgency == "high"
         assert lead.source == "reddit"
         assert lead.url == "https://reddit.com/r/test/123"
-        assert lead.status == "new"
+        assert lead.state == "discovery"
 
         # Verify the LLM API was called correctly
         mock_httpx_client.post.assert_awaited_once()
@@ -331,7 +331,7 @@ class TestStore:
             fit_reason="We automate",
             angle="Demo angle",
             urgency="high",
-            status="new",
+            state="discovery",
             seen_at="2025-01-01T00:00:00Z",
         )
 
@@ -394,7 +394,7 @@ class TestStore:
                 "fit_reason": "fr",
                 "angle": "ang",
                 "urgency": "medium",
-                "status": "new",
+                "state": "discovery",
                 "seen_at": "2025-01-01T00:00:00Z",
             }
         }
@@ -442,13 +442,13 @@ class TestStore:
                     "id": "z", "source": "hn", "url": "https://z", "title": "Z",
                     "company": "ZCorp", "score": 5, "pain_point": "p",
                     "fit_reason": "f", "angle": "a", "urgency": "low",
-                    "status": "new", "seen_at": "2025-01-02T00:00:00Z",
+                    "state": "discovery", "seen_at": "2025-01-02T00:00:00Z",
                 },
                 {
                     "id": "a", "source": "reddit", "url": "https://a", "title": "A",
                     "company": "ACorp", "score": 8, "pain_point": "p",
                     "fit_reason": "f", "angle": "a", "urgency": "high",
-                    "status": "new", "seen_at": "2025-01-01T00:00:00Z",
+                    "state": "discovery", "seen_at": "2025-01-01T00:00:00Z",
                 },
             ]
         }
@@ -481,27 +481,41 @@ class TestStore:
         leads = await list_leads()
         assert leads == []
 
-    # -- update_lead_status --
+    # -- update_lead_state --
 
-    async def test_update_lead_status_success(self, mock_client):
-        """update_lead_status returns True on 200."""
-        from src.store import update_lead_status
+    async def test_update_lead_state_success(self, mock_client):
+        """update_lead_state returns True on 200."""
+        from src.store import update_lead_state
+
+        # Mock get_lead to return a lead
+        mock_get = MagicMock()
+        mock_get.status_code = 200
+        mock_get.json.return_value = {
+            "item": {
+                "id": "abc123", "source": "reddit", "url": "https://x.com",
+                "title": "Test", "company": "Co", "score": 8,
+                "pain_point": "p", "fit_reason": "f", "angle": "a",
+                "urgency": "high", "state": "discovery", "seen_at": "2025-01-01T00:00:00Z",
+                "history": [],
+            }
+        }
+        mock_client.get.return_value = mock_get
 
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_client.put.return_value = mock_resp
 
-        result = await update_lead_status("abc123", "contacted")
+        result = await update_lead_state("abc123", "contacted")
         assert result is True
 
-    async def test_update_lead_status_network_error(self, mock_client):
-        """update_lead_status returns False on RequestError."""
+    async def test_update_lead_state_network_error(self, mock_client):
+        """update_lead_state returns False on RequestError."""
         from httpx import RequestError
-        from src.store import update_lead_status
+        from src.store import update_lead_state
 
-        mock_client.put.side_effect = RequestError("Down")
+        mock_client.get.side_effect = RequestError("Down")
 
-        result = await update_lead_status("abc123", "contacted")
+        result = await update_lead_state("abc123", "contacted")
         assert result is False
 
     # -- lead_exists --
@@ -561,7 +575,7 @@ class TestDigest:
             fit_reason="We automate",
             angle="Offer free trial",
             urgency="high",
-            status="new",
+            state="discovery",
             seen_at="2025-01-01T00:00:00Z",
         )
 
@@ -581,7 +595,7 @@ class TestDigest:
             fit_reason="We can help",
             angle="Share case study",
             urgency="medium",
-            status="new",
+            state="discovery",
             seen_at="2025-01-01T00:00:00Z",
         )
 
@@ -601,7 +615,7 @@ class TestDigest:
             fit_reason="",
             angle="",
             urgency="low",
-            status="new",
+            state="discovery",
             seen_at="2025-01-01T00:00:00Z",
         )
 
@@ -712,7 +726,7 @@ class TestDigest:
             fit_reason="Fit",
             angle="Angle",
             urgency="high",
-            status="new",
+            state="discovery",
             seen_at="2025-01-01T00:00:00Z",
         )
 
@@ -802,23 +816,28 @@ class TestRunner:
         patcher2 = patch("src.runner.lead_exists")
         patcher3 = patch("src.runner.score_items")
         patcher4 = patch("src.runner.store_lead")
-        patcher5 = patch("src.runner.settings")
+        patcher5 = patch("src.runner.enrich_leads")
+        patcher6 = patch("src.runner.settings")
 
         mock_get_collectors = patcher1.start()
         mock_lead_exists = patcher2.start()
         mock_score_items = patcher3.start()
         mock_store_lead = patcher4.start()
-        mock_settings = patcher5.start()
+        mock_enrich_leads = patcher5.start()
+        mock_settings = patcher6.start()
 
         # Default: no telegram config so send_digest doesn't call external API
         mock_settings.telegram_bot_token = ""
         mock_settings.telegram_chat_id = ""
+        # Default: enrich_leads passes through (returns the same list)
+        mock_enrich_leads.side_effect = lambda leads: leads
 
         yield {
             "get_all_collectors": mock_get_collectors,
             "lead_exists": mock_lead_exists,
             "score_items": mock_score_items,
             "store_lead": mock_store_lead,
+            "enrich_leads": mock_enrich_leads,
             "settings": mock_settings,
         }
 
@@ -827,6 +846,7 @@ class TestRunner:
         patcher3.stop()
         patcher4.stop()
         patcher5.stop()
+        patcher6.stop()
 
     @pytest.fixture
     def mock_collector(self):
@@ -870,7 +890,7 @@ class TestRunner:
                 fit_reason="We do automation",
                 angle="Demo call",
                 urgency="high",
-                status="new",
+                state="discovery",
                 seen_at="2025-01-01T00:00:00Z",
             ),
             ScoredLead(
@@ -885,7 +905,7 @@ class TestRunner:
                 fit_reason="Good fit",
                 angle="Share case study",
                 urgency="medium",
-                status="new",
+                state="discovery",
                 seen_at="2025-01-01T00:00:00Z",
             ),
         ]
@@ -981,8 +1001,8 @@ class TestRunner:
         assert stats["new_leads"] == 0
         assert stats["errors"] == 2  # both store attempts failed
 
-    async def test_pipeline_filters_non_new_leads(self, mock_all_deps, mock_collector):
-        """Leads with status != 'new' are excluded from digest categorization."""
+    async def test_pipeline_filters_non_discovery_leads(self, mock_all_deps, mock_collector):
+        """Leads with state != 'discovery' are excluded from digest categorization."""
         from src.runner import run_pipeline
         from src.models import ScoredLead
 
@@ -990,18 +1010,18 @@ class TestRunner:
         mock_all_deps["lead_exists"].return_value = False
         mock_all_deps["score_items"].return_value = [
             ScoredLead(
-                id="interested", source="test", url="https://x.com/a",
+                id="active", source="test", url="https://x.com/a",
                 title="Active", body="test",
                 company="ActiveCo", score=9,
                 pain_point="x", fit_reason="y", angle="z",
-                urgency="high", status="new",  # should be counted
+                urgency="high", state="discovery",  # should show in digest
             ),
             ScoredLead(
-                id="not_interested", source="test", url="https://x.com/b",
-                title="Gone", body="test",
+                id="dead", source="test", url="https://x.com/b",
+                title="Dead", body="test",
                 company="DeadCo", score=6,
                 pain_point="x", fit_reason="y", angle="z",
-                urgency="low", status="not_interested",  # should be excluded
+                urgency="low", state="not_interested",  # should be excluded
             ),
         ]
         mock_all_deps["store_lead"].return_value = True
@@ -1011,5 +1031,5 @@ class TestRunner:
         assert stats["scanned"] == 1
         assert stats["scored"] == 2
         assert stats["new_leads"] == 2  # both stored
-        assert stats["hot"] == 1     # only the 'new' one (score 9)
+        assert stats["hot"] == 1     # only the 'discovery' one (score 9)
         assert stats["warm"] == 0    # the 'not_interested' one excluded
