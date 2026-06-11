@@ -7,6 +7,10 @@ Microservices army — backend services running on the homelab k3s cluster.
 | Service | Description | Stack |
 |---|---|---|
 | **dynamo-svc** | Amazon DynamoDB gateway | FastAPI + boto3 |
+| **pythia** | Lead oracle — AI-powered lead collection, scoring & enrichment | FastAPI + DeepSeek + DynamoDB |
+| **angelos** | Contact form — public message intake | FastAPI + Clio |
+| **iris** | Email delivery — transactional messages | FastAPI + SMTP |
+| **helios** | Admin dashboard — messages & leads overview | React + Vite |
 
 ## Structure
 
