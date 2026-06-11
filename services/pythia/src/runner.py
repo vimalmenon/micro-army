@@ -1,15 +1,12 @@
-"""Runner — orchestrates collect → score → enrich → store → digest."""
+"""Runner — orchestrates collect → score → enrich → store."""
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timezone
 
-import httpx
-
 from collectors import get_all_collectors
 from config import settings
-from digest import categorize_leads, format_telegram_digest
+from digest import categorize_leads
 from enricher import enrich_leads
 from scorer import score_items
 from store import lead_exists, list_leads, store_lead
@@ -86,42 +83,4 @@ async def run_pipeline() -> dict:
     stats["warm"] = len(warm)
     stats["cold"] = stats["scanned"] - stats["scored"]
 
-    # Step 6: Send digest
-    if hot or warm:
-        await send_digest(hot, warm, stats)
-
     return stats
-
-
-async def send_digest(hot: list, warm: list, stats: dict) -> bool:
-    """Send Telegram digest via Hermes cron delivery or direct API."""
-    text = format_telegram_digest(
-        hot=hot,
-        warm=warm,
-        total_scanned=stats["scanned"],
-        cold_count=stats["cold"],
-    )
-
-    if settings.telegram_bot_token and settings.telegram_chat_id:
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.post(
-                    f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage",
-                    json={
-                        "chat_id": settings.telegram_chat_id,
-                        "text": text,
-                        "parse_mode": "Markdown",
-                        "disable_web_page_preview": True,
-                    },
-                )
-                if resp.status_code == 200:
-                    logger.info("Digest sent via Telegram API")
-                    return True
-                else:
-                    logger.warning("Telegram API returned %s: %s", resp.status_code, resp.text[:200])
-        except Exception as e:
-            logger.warning("Failed to send Telegram: %s", e)
-
-    print("=== LEAD DIGEST ===")
-    print(text)
-    return True
