@@ -245,6 +245,36 @@ async def list_subscribers():
     return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
+# ─── Leads Proxies (→ Pythia) ──────────────────────
+
+
+@app.get("/leads", tags=["leads"])
+async def list_leads(limit: int = 100):
+    """List all leads — proxies to Pythia."""
+    pythia_url = settings.pythia_svc_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(f"{pythia_url}/leads", params={"limit": limit})
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.get("/leads/{lead_id}", tags=["leads"])
+async def get_lead(lead_id: str):
+    """Get a single lead by ID — proxies to Pythia."""
+    pythia_url = settings.pythia_svc_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(f"{pythia_url}/leads/{lead_id}")
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.patch("/leads/{lead_id}", tags=["leads"])
+async def update_lead_state(lead_id: str, body: dict):
+    """Update a lead's state — proxies to Pythia."""
+    pythia_url = settings.pythia_svc_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.patch(f"{pythia_url}/leads/{lead_id}", json=body)
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
 @app.delete("/messages/{message_id}", response_model=MessageDeleteResponse, tags=["messages"])
 async def delete_message(message_id: str):
     """Delete a contact form message by ID."""
