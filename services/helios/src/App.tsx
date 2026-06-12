@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 const API_BASE = 'https://messages.completeautomate.com';
 
@@ -116,6 +116,12 @@ function scoreColor(score: number): string {
   return 'text-gray-500';
 }
 
+function getPageTitle(tab: ViewState['tab']): string {
+  if (tab === 'dashboard') return 'Signals and sections';
+  if (tab === 'messages' || tab === 'message-detail') return 'Inbox workspace';
+  return 'Pipeline workspace';
+}
+
 // ── Hooks ──────────────────────────────────────────
 
 function useMessages() {
@@ -229,7 +235,7 @@ function useLeads() {
       setLeads((prev) =>
         prev.map((l) => (l.id === id ? { ...l, state: newState } : l))
       );
-      setLeadDetail((prev) => (prev && prev.id === id ? { ...prev, state: newState } : prev));
+      setLeadDetail((prev) => (prev?.id === id ? { ...prev, state: newState } : prev));
     } catch (e) {
       console.error('Failed to update lead state', e);
     }
@@ -245,12 +251,12 @@ function MessageDetailView({
   onBack,
   onMarkRead,
   onDelete,
-}: {
+}: Readonly<{
   message: Message;
   onBack: () => void;
   onMarkRead: (id: string) => void;
   onDelete: (id: string) => void;
-}) {
+}>) {
   return (
     <div className="space-y-6">
       <button
@@ -283,7 +289,7 @@ function MessageDetailView({
             )}
             <button
               onClick={() => {
-                if (window.confirm('Delete this message?')) onDelete(message.id);
+                if (globalThis.confirm('Delete this message?')) onDelete(message.id);
               }}
               className="rounded-md bg-red-600/20 px-3 py-1 text-xs font-medium text-red-400 transition hover:bg-red-600/30"
             >
@@ -307,11 +313,11 @@ function LeadDetailView({
   lead,
   onBack,
   onUpdateState,
-}: {
+}: Readonly<{
   lead: Lead;
   onBack: () => void;
   onUpdateState: (id: string, state: string) => void;
-}) {
+}>) {
   return (
     <div className="space-y-6">
       <button
@@ -353,7 +359,7 @@ function LeadDetailView({
 
       {/* State update */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
-        <label className="mb-2 block text-xs font-medium text-gray-500 uppercase tracking-wide">Change State</label>
+        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Change State</div>
         <div className="flex flex-wrap gap-2">
           {LEAD_STATES.map((s) => (
             <button
@@ -417,7 +423,7 @@ function LeadDetailView({
             <div className="col-span-2">
               <span className="text-gray-500">Recent News:</span>
               <ul className="mt-1 list-inside list-disc text-gray-400">
-                {lead.recent_news.slice(0, 5).map((n, i) => <li key={i} className="truncate">{n}</li>)}
+                {lead.recent_news.slice(0, 5).map((newsItem) => <li key={newsItem} className="truncate">{newsItem}</li>)}
               </ul>
             </div>
           )}
@@ -429,8 +435,8 @@ function LeadDetailView({
         <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
           <h3 className="mb-3 text-xs font-medium text-gray-500 uppercase tracking-wide">State History</h3>
           <div className="space-y-1">
-            {lead.history.map((h, i) => (
-              <div key={i} className="flex items-center gap-3 text-xs">
+            {lead.history.map((h) => (
+              <div key={`${h.state}-${h.at}`} className="flex items-center gap-3 text-xs">
                 <span className={`rounded px-2 py-0.5 ${stateColor(h.state)}`}>{h.state}</span>
                 <span className="text-gray-600">{formatDate(h.at)}</span>
               </div>
@@ -439,6 +445,249 @@ function LeadDetailView({
         </div>
       )}
     </div>
+  );
+}
+
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+}: Readonly<{
+  eyebrow: string;
+  title: string;
+  description: string;
+  action?: ReactNode;
+}>) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-gray-800/80 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-400/80">{eyebrow}</p>
+        <h2 className="mt-2 text-lg font-semibold text-white">{title}</h2>
+        <p className="mt-1 max-w-2xl text-sm text-gray-400">{description}</p>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
+function DashboardSection({
+  id,
+  title,
+  description,
+  children,
+  action,
+}: Readonly<{
+  id: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+  action?: ReactNode;
+}>) {
+  return (
+    <section id={id} className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900/45 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
+      <SectionHeader eyebrow={id} title={title} description={description} action={action} />
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function OverviewSection({
+  messageCount,
+  unreadCount,
+  leadCount,
+  hotCount,
+  warmCount,
+}: Readonly<{
+  messageCount: number;
+  unreadCount: number;
+  leadCount: number;
+  hotCount: number;
+  warmCount: number;
+}>) {
+  const stats = [
+    { label: 'Total Messages', value: messageCount, tone: 'text-white' },
+    { label: 'Unread Inbox', value: unreadCount, tone: 'text-cyan-400' },
+    { label: 'Lead Pipeline', value: leadCount, tone: 'text-white' },
+    { label: 'Hot Leads', value: hotCount, tone: 'text-green-400' },
+    { label: 'Warm Leads', value: warmCount, tone: 'text-yellow-400' },
+  ];
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      {stats.map((stat) => (
+        <div
+          key={stat.label}
+          className="rounded-2xl border border-gray-800/80 bg-gray-950/60 p-4"
+        >
+          <p className={`text-3xl font-semibold ${stat.tone}`}>{stat.value}</p>
+          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-500">{stat.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MessagesSection({
+  messages,
+  loading,
+  error,
+  onRefresh,
+  onOpen,
+  onDelete,
+}: Readonly<{
+  messages: Message[];
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
+}>) {
+  let content: ReactNode;
+
+  if (loading) {
+    content = (
+      <div className="flex items-center justify-center py-16">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+      </div>
+    );
+  } else if (error) {
+    content = <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-8 text-center text-sm text-red-300">{error}</div>;
+  } else if (messages.length === 0) {
+    content = <div className="rounded-xl border border-gray-800 bg-gray-950/40 px-5 py-8 text-center text-sm text-gray-500">No messages yet.</div>;
+  } else {
+    content = (
+      <div className="space-y-3">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className="flex flex-col gap-4 rounded-2xl border border-gray-800/80 bg-gray-950/55 p-4 transition hover:border-gray-700 hover:bg-gray-950/80 lg:flex-row lg:items-center"
+          >
+            <button
+              onClick={() => onOpen(msg.id)}
+              className="flex min-w-0 flex-1 items-start gap-4 text-left"
+            >
+              <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${msg.read ? 'bg-gray-700' : 'bg-cyan-500'}`} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="truncate text-sm font-medium text-gray-100">{msg.name}</span>
+                  <span className="truncate text-xs uppercase tracking-[0.16em] text-gray-500">{msg.subject}</span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-sm text-gray-400">{msg.message}</p>
+              </div>
+            </button>
+            <div className="flex items-center justify-between gap-3 lg:justify-end">
+              <span className="shrink-0 text-right text-xs text-gray-500">
+                <div>{formatTime(msg.created_at)}</div>
+                <div className="text-gray-600">{formatDate(msg.created_at)}</div>
+              </span>
+              <button
+                onClick={() => {
+                  if (globalThis.confirm(`Delete message from ${msg.name}?`)) onDelete(msg.id);
+                }}
+                className="shrink-0 rounded-md bg-red-600/15 px-2.5 py-1 text-xs font-medium text-red-300 transition hover:bg-red-600/25"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <DashboardSection
+      id="messages"
+      title="Inbox"
+      description="Recent contact form submissions with fast access to detail and cleanup actions."
+      action={
+        <button
+          onClick={onRefresh}
+          className="rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white"
+        >
+          Refresh inbox
+        </button>
+      }
+    >
+      {content}
+    </DashboardSection>
+  );
+}
+
+function LeadsSection({
+  leads,
+  loading,
+  error,
+  onRefresh,
+  onOpen,
+}: Readonly<{
+  leads: Lead[];
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  onOpen: (id: string) => void;
+}>) {
+  let content: ReactNode;
+
+  if (loading) {
+    content = (
+      <div className="flex items-center justify-center py-16">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+      </div>
+    );
+  } else if (error) {
+    content = <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-8 text-center text-sm text-red-300">{error}</div>;
+  } else if (leads.length === 0) {
+    content = <div className="rounded-xl border border-gray-800 bg-gray-950/40 px-5 py-8 text-center text-sm text-gray-500">No leads yet. Pythia runs daily at 12:00 HKT.</div>;
+  } else {
+    content = (
+      <div className="space-y-3">
+        {leads.map((lead) => (
+          <button
+            key={lead.id}
+            onClick={() => onOpen(lead.id)}
+            className="flex w-full flex-col gap-3 rounded-2xl border border-gray-800/80 bg-gray-950/55 p-4 text-left transition hover:border-gray-700 hover:bg-gray-950/80 lg:flex-row lg:items-center"
+          >
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <span className="mt-0.5 text-lg">{sourceIcon(lead.source)}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="truncate text-sm font-medium text-gray-100">{lead.company || lead.title}</span>
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${stateColor(lead.state)}`}>
+                    {lead.state}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-sm text-gray-400">{lead.pain_point}</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
+              <span className={`rounded px-2 py-0.5 font-bold ${scoreColor(lead.score)}`}>{lead.score}/10</span>
+              <span className={`rounded px-2 py-0.5 ${urgencyColor(lead.urgency)}`}>{lead.urgency}</span>
+              <span className="text-gray-500">{formatTime(lead.seen_at)}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <DashboardSection
+      id="leads"
+      title="Pipeline"
+      description="Prioritized prospects, scored by urgency and fit so outreach can move without context switching."
+      action={
+        <button
+          onClick={onRefresh}
+          className="rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white"
+        >
+          Refresh pipeline
+        </button>
+      }
+    >
+      {content}
+    </DashboardSection>
   );
 }
 
@@ -457,7 +706,7 @@ export default function App() {
     if (view.tab === 'lead-detail') {
       fetchLeadDetail(view.leadId);
     }
-  }, [view, fetchLeadDetail]);
+  }, [fetchLeadDetail, view]);
 
   const handleDelete = (id: string) => {
     deleteMessage(id);
@@ -466,34 +715,179 @@ export default function App() {
 
   const hotCount = leads.filter((l) => l.score >= 8).length;
   const warmCount = leads.filter((l) => l.score >= 5 && l.score < 8).length;
+  const isDetailView = view.tab === 'message-detail' || view.tab === 'lead-detail';
+  const pageTitle = getPageTitle(view.tab);
+  const pageDescription = isDetailView
+    ? 'Review a single record with full context, then step back into the larger workflow when needed.'
+    : 'The app is split into overview, inbox, and pipeline sections so navigation stays stable as the data changes.';
+
+  const pageTabs = [
+    {
+      key: 'dashboard' as const,
+      label: 'Overview',
+      description: 'High-level system status',
+    },
+    {
+      key: 'messages' as const,
+      label: 'Inbox',
+      description: 'Message triage and follow-up',
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
+    {
+      key: 'leads' as const,
+      label: 'Pipeline',
+      description: 'Qualified prospects and urgency',
+      badge: hotCount > 0 ? hotCount : undefined,
+    },
+  ];
+
+  const renderPrimaryContent = () => {
+    if (view.tab === 'dashboard') {
+      return (
+        <div className="space-y-6">
+          <div className="grid gap-3 rounded-2xl border border-gray-800 bg-gray-900/45 p-4 md:grid-cols-3">
+            {[
+              { label: 'Overview', href: '#overview' },
+              { label: 'Inbox', href: '#messages' },
+              { label: 'Pipeline', href: '#leads' },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="rounded-xl border border-gray-800 bg-gray-950/60 px-4 py-3 text-sm text-gray-300 transition hover:border-cyan-500/40 hover:text-white"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+
+          <DashboardSection
+            id="overview"
+            title="Signal overview"
+            description="A single scan of inbox volume, pipeline pressure, and lead temperature."
+          >
+            <OverviewSection
+              messageCount={messages.length}
+              unreadCount={unreadCount}
+              leadCount={leads.length}
+              hotCount={hotCount}
+              warmCount={warmCount}
+            />
+          </DashboardSection>
+
+          <MessagesSection
+            messages={messages.slice(0, 5)}
+            loading={msgLoading}
+            error={msgError}
+            onRefresh={fetchMessages}
+            onOpen={(id) => setView({ tab: 'message-detail', messageId: id })}
+            onDelete={handleDelete}
+          />
+
+          <LeadsSection
+            leads={leads.slice(0, 6)}
+            loading={leadLoading}
+            error={leadError}
+            onRefresh={fetchLeads}
+            onOpen={(id) => setView({ tab: 'lead-detail', leadId: id })}
+          />
+        </div>
+      );
+    }
+
+    if (view.tab === 'messages') {
+      return (
+        <MessagesSection
+          messages={messages}
+          loading={msgLoading}
+          error={msgError}
+          onRefresh={fetchMessages}
+          onOpen={(id) => setView({ tab: 'message-detail', messageId: id })}
+          onDelete={handleDelete}
+        />
+      );
+    }
+
+    return (
+      <LeadsSection
+        leads={leads}
+        loading={leadLoading}
+        error={leadError}
+        onRefresh={fetchLeads}
+        onOpen={(id) => setView({ tab: 'lead-detail', leadId: id })}
+      />
+    );
+  };
+
+  let mainContent: ReactNode;
+
+  if (view.tab === 'message-detail' && selectedMessage) {
+    mainContent = (
+      <MessageDetailView
+        message={selectedMessage}
+        onBack={() => setView({ tab: 'messages' })}
+        onMarkRead={(id) => {
+          markRead(id);
+          setView({ tab: 'messages' });
+        }}
+        onDelete={handleDelete}
+      />
+    );
+  } else if (view.tab === 'lead-detail' && selectedLead) {
+    mainContent = (
+      <LeadDetailView
+        lead={selectedLead}
+        onBack={() => setView({ tab: 'leads' })}
+        onUpdateState={(id, state) => updateState(id, state)}
+      />
+    );
+  } else {
+    mainContent = renderPrimaryContent();
+  }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_24%),linear-gradient(180deg,#020617_0%,#020617_42%,#111827_100%)] text-gray-100">
       {/* Sidebar */}
-      <aside className="flex w-56 flex-col border-r border-gray-800 bg-gray-950 p-4">
-        <div className="mb-6 flex items-center gap-2">
+      <aside className="hidden w-72 flex-col border-r border-gray-800/80 bg-gray-950/80 p-5 lg:flex">
+        <div className="mb-8 flex items-center gap-3">
           <span className="text-xl">☀️</span>
-          <span className="text-lg font-bold">Helios</span>
+          <div>
+            <span className="text-lg font-bold">Helios</span>
+            <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Lead intelligence desk</p>
+          </div>
         </div>
-        <nav className="flex flex-col gap-1">
+
+        <div className="mb-6 rounded-2xl border border-gray-800 bg-gray-900/60 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Today</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{hotCount}</p>
+          <p className="mt-1 text-sm text-gray-400">High-priority prospects ready for outreach.</p>
+        </div>
+
+        <nav className="flex flex-col gap-2">
           <button
             onClick={() => setView({ tab: 'dashboard' })}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
-              view.tab === 'dashboard' ? 'bg-cyan-600/20 text-cyan-400' : 'text-gray-400 hover:text-gray-200'
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
+              view.tab === 'dashboard' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
           >
             <span>📊</span>
-            <span>Dashboard</span>
+            <div className="flex flex-col items-start">
+              <span>Overview</span>
+              <span className="text-xs text-gray-500">Metrics and recent movement</span>
+            </div>
           </button>
           <button
             onClick={() => setView({ tab: 'messages' })}
-            className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
-              view.tab === 'messages' || view.tab === 'message-detail' ? 'bg-cyan-600/20 text-cyan-400' : 'text-gray-400 hover:text-gray-200'
+            className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
+              view.tab === 'messages' || view.tab === 'message-detail' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
           >
             <div className="flex items-center gap-2">
               <span>✉️</span>
-              <span>Messages</span>
+              <div className="flex flex-col items-start">
+                <span>Inbox</span>
+                <span className="text-xs text-gray-500">Form traffic and replies</span>
+              </div>
             </div>
             {unreadCount > 0 && (
               <span className="rounded-full bg-cyan-600 px-2 py-0.5 text-xs font-bold text-white">
@@ -503,13 +897,16 @@ export default function App() {
           </button>
           <button
             onClick={() => setView({ tab: 'leads' })}
-            className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
-              view.tab === 'leads' || view.tab === 'lead-detail' ? 'bg-cyan-600/20 text-cyan-400' : 'text-gray-400 hover:text-gray-200'
+            className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
+              view.tab === 'leads' || view.tab === 'lead-detail' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
           >
             <div className="flex items-center gap-2">
               <span>🎯</span>
-              <span>Leads</span>
+              <div className="flex flex-col items-start">
+                <span>Pipeline</span>
+                <span className="text-xs text-gray-500">Scored prospects and next steps</span>
+              </div>
             </div>
             {hotCount > 0 && (
               <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
@@ -518,184 +915,58 @@ export default function App() {
             )}
           </button>
         </nav>
+
+        <div className="mt-auto rounded-2xl border border-gray-800 bg-gray-900/50 p-4 text-sm text-gray-400">
+          <p className="font-medium text-gray-200">Workflow split</p>
+          <p className="mt-2">Use the sidebar for workspace navigation and the page header for section-level movement inside the current screen.</p>
+        </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto p-6">
-        {view.tab === 'message-detail' && selectedMessage ? (
-          <MessageDetailView
-            message={selectedMessage}
-            onBack={() => setView({ tab: 'messages' })}
-            onMarkRead={(id) => {
-              markRead(id);
-              setView({ tab: 'messages' });
-            }}
-            onDelete={handleDelete}
-          />
-        ) : view.tab === 'lead-detail' && selectedLead ? (
-          <LeadDetailView
-            lead={selectedLead}
-            onBack={() => setView({ tab: 'leads' })}
-            onUpdateState={(id, state) => updateState(id, state)}
-          />
-        ) : (
-          <div className="space-y-6">
-            {/* Stats */}
-            <div className="flex gap-4">
-              <div className="flex-1 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
-                <p className="text-2xl font-bold">{messages.length}</p>
-                <p className="text-xs text-gray-500">Total Messages</p>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+          <header className="mb-6 rounded-3xl border border-gray-800/80 bg-gray-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.45)] sm:p-6">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-cyan-400/80">Operations console</p>
+                <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">{pageTitle}</h1>
+                <p className="mt-3 max-w-3xl text-sm text-gray-400 sm:text-base">{pageDescription}</p>
               </div>
-              <div className="flex-1 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
-                <p className="text-2xl font-bold text-cyan-400">{unreadCount}</p>
-                <p className="text-xs text-gray-500">Unread</p>
-              </div>
-              <div className="flex-1 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
-                <p className="text-2xl font-bold">{leads.length}</p>
-                <p className="text-xs text-gray-500">Total Leads</p>
-              </div>
-              <div className="flex-1 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
-                <p className="text-2xl font-bold text-green-400">{hotCount}</p>
-                <p className="text-xs text-gray-500">Hot</p>
-              </div>
-              <div className="flex-1 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
-                <p className="text-2xl font-bold text-yellow-400">{warmCount}</p>
-                <p className="text-xs text-gray-500">Warm</p>
-              </div>
+
+              {!isDetailView && (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {pageTabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setView({ tab: tab.key })}
+                      className={`rounded-2xl border px-4 py-3 text-left transition ${
+                        view.tab === tab.key
+                          ? 'border-cyan-500/40 bg-cyan-500/10 text-white'
+                          : 'border-gray-800 bg-gray-950/55 text-gray-400 hover:border-gray-700 hover:text-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-medium">{tab.label}</span>
+                        {tab.badge != null && (
+                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white">{tab.badge}</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">{tab.description}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+          </header>
 
-            {/* Messages Table */}
-            {view.tab !== 'leads' && view.tab !== 'lead-detail' && (
-              <div className="rounded-xl border border-gray-800 bg-gray-900/40">
-                <div className="flex items-center justify-between border-b border-gray-800 px-5 py-3">
-                  <h2 className="text-sm font-bold tracking-wide text-gray-300 uppercase">Messages</h2>
-                  <button
-                    onClick={fetchMessages}
-                    className="rounded-md bg-gray-800 px-3 py-1.5 text-xs text-gray-400 transition hover:text-gray-200"
-                  >
-                    Refresh
-                  </button>
-                </div>
-
-                {msgLoading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
-                  </div>
-                ) : msgError ? (
-                  <div className="px-5 py-8 text-center text-sm text-red-400">{msgError}</div>
-                ) : messages.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-sm text-gray-500">No messages yet.</div>
-                ) : (
-                  <div className="divide-y divide-gray-800/50">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className="flex w-full items-center gap-4 px-5 py-3.5 transition hover:bg-gray-800/40"
-                      >
-                        <button
-                          onClick={() => setView({ tab: 'message-detail', messageId: msg.id })}
-                          className="flex min-w-0 flex-1 items-center gap-4 text-left"
-                        >
-                          <div className={`h-2 w-2 shrink-0 rounded-full ${msg.read ? 'bg-transparent' : 'bg-cyan-500'}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-3">
-                              <span className="truncate text-sm font-medium text-gray-200">{msg.name}</span>
-                              <span className="truncate text-xs text-gray-500">{msg.subject}</span>
-                            </div>
-                            <p className="mt-0.5 truncate text-xs text-gray-600">{msg.message}</p>
-                          </div>
-                          <span className="shrink-0 text-right text-xs text-gray-600">
-                            <div>{formatTime(msg.created_at)}</div>
-                            <div className="text-gray-700">{formatDate(msg.created_at)}</div>
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Delete message from ${msg.name}?`)) handleDelete(msg.id);
-                          }}
-                          className="shrink-0 rounded-md bg-red-600/20 px-2.5 py-1 text-xs font-medium text-red-400 transition hover:bg-red-600/30"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Leads Table */}
-            {(view.tab === 'leads' || view.tab === 'lead-detail') && (
-              <div className="rounded-xl border border-gray-800 bg-gray-900/40">
-                <div className="flex items-center justify-between border-b border-gray-800 px-5 py-3">
-                  <h2 className="text-sm font-bold tracking-wide text-gray-300 uppercase">Leads</h2>
-                  <button
-                    onClick={fetchLeads}
-                    className="rounded-md bg-gray-800 px-3 py-1.5 text-xs text-gray-400 transition hover:text-gray-200"
-                  >
-                    Refresh
-                  </button>
-                </div>
-
-                {leadLoading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
-                  </div>
-                ) : leadError ? (
-                  <div className="px-5 py-8 text-center text-sm text-red-400">{leadError}</div>
-                ) : leads.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-sm text-gray-500">No leads yet. Pythia runs daily at 12:00 HKT.</div>
-                ) : (
-                  <div className="divide-y divide-gray-800/50">
-                    {leads.map((lead) => (
-                      <div
-                        key={lead.id}
-                        className="flex w-full items-center gap-4 px-5 py-3 transition hover:bg-gray-800/40"
-                      >
-                        <button
-                          onClick={() => {
-                            setView({ tab: 'lead-detail', leadId: lead.id });
-                          }}
-                          className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                        >
-                          <span className="text-base">{sourceIcon(lead.source)}</span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate text-sm font-medium text-gray-200">
-                                {lead.company || lead.title}
-                              </span>
-                              <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${stateColor(lead.state)}`}>
-                                {lead.state}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 truncate text-xs text-gray-500">{lead.pain_point}</p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span className={`rounded px-2 py-0.5 text-xs font-bold ${scoreColor(lead.score)}`}>
-                              {lead.score}
-                            </span>
-                            <span className={`rounded px-2 py-0.5 text-xs ${urgencyColor(lead.urgency)}`}>
-                              {lead.urgency}
-                            </span>
-                            <span className="text-right text-xs text-gray-600">
-                              <div>{formatTime(lead.seen_at)}</div>
-                            </span>
-                          </div>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        {mainContent}
 
         {detailLoading && view.tab === 'lead-detail' && (
           <div className="mt-4 flex items-center justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
           </div>
         )}
+        </div>
       </main>
     </div>
   );
