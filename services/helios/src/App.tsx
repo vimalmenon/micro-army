@@ -76,7 +76,7 @@ export default function App() {
     if (view.tab === 'lead-detail') {
       fetchLeadDetail(view.leadId);
     }
-  }, [fetchLeadDetail, view]);
+  }, []);
 
   useEffect(() => {
     navigateToView(getViewFromLocation(), 'replace');
