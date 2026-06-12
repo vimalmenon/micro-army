@@ -1,19 +1,21 @@
+import { useNavigate } from 'react-router-dom';
+
+import { useHeliosData } from '../context/HeliosDataContext';
 import { LEAD_STATES, formatDate, formatTime, scoreColor, sourceIcon, stateColor, urgencyColor } from '../lib/helios';
 import type { Lead } from '../lib/types';
 
 export function LeadDetailPage({
   lead,
-  onBack,
-  onUpdateState,
 }: Readonly<{
   lead: Lead;
-  onBack: () => void;
-  onUpdateState: (id: string, state: string) => void;
 }>) {
+  const navigate = useNavigate();
+  const { updateState } = useHeliosData();
+
   return (
     <div className="space-y-6">
       <button
-        onClick={onBack}
+        onClick={() => navigate('/leads')}
         className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-gray-200"
       >
         ← Leads
@@ -54,7 +56,7 @@ export function LeadDetailPage({
           {LEAD_STATES.map((state) => (
             <button
               key={state}
-              onClick={() => onUpdateState(lead.id, state)}
+              onClick={() => updateState(lead.id, state)}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                 lead.state === state
                   ? 'bg-cyan-600/30 text-cyan-400 ring-1 ring-cyan-500/50'

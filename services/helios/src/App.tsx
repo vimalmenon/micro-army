@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { NavLink, Navigate, useLocation, useMatch } from 'react-router-dom';
 
-import { useLeads } from './hooks/useLeads';
-import { useMessages } from './hooks/useMessages';
+import { useHeliosData } from './context/HeliosDataContext';
 import { getPageTitle } from './lib/helios';
 import type { Lead, Message, ViewState } from './lib/types';
 import { DashboardPage } from './pages/DashboardPage';
@@ -10,196 +10,149 @@ import { LeadsPage } from './pages/LeadsPage';
 import { MessageDetailPage } from './pages/MessageDetailPage';
 import { MessagesPage } from './pages/MessagesPage';
 
-function getViewFromLocation(): ViewState {
-  const params = new URLSearchParams(globalThis.location.search);
-  const page = params.get('page');
-  const messageId = params.get('messageId');
-  const leadId = params.get('leadId');
-
-  if (page === 'messages') {
-    return messageId ? { tab: 'message-detail', messageId } : { tab: 'messages' };
-  }
-
-  if (page === 'leads') {
-    return leadId ? { tab: 'lead-detail', leadId } : { tab: 'leads' };
-  }
-
+function getViewFromPath(pathname: string, messageId?: string, leadId?: string): ViewState {
+  if (pathname === '/messages') return { tab: 'messages' };
+  if (pathname === '/leads') return { tab: 'leads' };
+  if (messageId) return { tab: 'message-detail', messageId };
+  if (leadId) return { tab: 'lead-detail', leadId };
   return { tab: 'dashboard' };
 }
 
-function getUrlForView(view: ViewState): string {
-  const url = new URL(globalThis.location.href);
-
-  url.searchParams.delete('page');
-  url.searchParams.delete('messageId');
-  url.searchParams.delete('leadId');
-
-  if (view.tab === 'messages') {
-    url.searchParams.set('page', 'messages');
-    url.hash = '';
-  } else if (view.tab === 'message-detail') {
-    url.searchParams.set('page', 'messages');
-    url.searchParams.set('messageId', view.messageId);
-    url.hash = '';
-  } else if (view.tab === 'leads') {
-    url.searchParams.set('page', 'leads');
-    url.hash = '';
-  } else if (view.tab === 'lead-detail') {
-    url.searchParams.set('page', 'leads');
-    url.searchParams.set('leadId', view.leadId);
-    url.hash = '';
-  }
-
-  return `${url.pathname}${url.search}${url.hash}`;
+function LoadingIndicator() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+    </div>
+  );
 }
 
-export default function App() {
-  const [view, setView] = useState<ViewState>(() => getViewFromLocation());
-  const { messages, loading: msgLoading, error: msgError, unreadCount, fetchMessages, markRead, deleteMessage } = useMessages();
-  const { leads, loading: leadLoading, error: leadError, leadDetail, detailLoading, fetchLeads, fetchLeadDetail, updateState } = useLeads();
-
-  const navigateToView = useCallback((nextView: ViewState, mode: 'push' | 'replace' = 'push') => {
-    setView(nextView);
-
-    const nextUrl = getUrlForView(nextView);
-    const currentUrl = `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash}`;
-
-    if (nextUrl !== currentUrl) {
-      globalThis.history[mode === 'replace' ? 'replaceState' : 'pushState'](null, '', nextUrl);
-    }
-  }, []);
-
-  const selectedMessage = view.tab === 'message-detail' ? messages.find((message: Message) => message.id === view.messageId) : null;
-  const selectedLead = view.tab === 'lead-detail' ? (leadDetail || leads.find((lead: Lead) => lead.id === view.leadId)) : null;
-
-  useEffect(() => {
-    if (view.tab === 'lead-detail') {
-      fetchLeadDetail(view.leadId);
-    }
-  }, []);
-
-  useEffect(() => {
-    navigateToView(getViewFromLocation(), 'replace');
-
-    const handlePopState = () => {
-      setView(getViewFromLocation());
-    };
-
-    globalThis.addEventListener('popstate', handlePopState);
-
-    return () => {
-      globalThis.removeEventListener('popstate', handlePopState);
-    };
-  }, [navigateToView]);
-
-  const handleDelete = (id: string) => {
-    deleteMessage(id);
-    if (view.tab === 'message-detail' && view.messageId === id) navigateToView({ tab: 'messages' });
-  };
-
-  const hotCount = leads.filter((lead: Lead) => lead.score >= 8).length;
-  const warmCount = leads.filter((lead: Lead) => lead.score >= 5 && lead.score < 8).length;
-  const isDetailView = view.tab === 'message-detail' || view.tab === 'lead-detail';
-  const pageTitle = getPageTitle(view.tab);
-  const pageDescription = isDetailView
-    ? 'Review a single record with full context, then step back into the larger workflow when needed.'
-    : 'The app is split into overview, inbox, and pipeline sections so navigation stays stable as the data changes.';
-
-  const pageTabs = [
+function getPageTabs(unreadCount: number, hotCount: number) {
+  return [
     {
       key: 'dashboard' as const,
       label: 'Overview',
       description: 'High-level system status',
+      to: '/',
+      badge: undefined,
     },
     {
       key: 'messages' as const,
       label: 'Inbox',
       description: 'Message triage and follow-up',
+      to: '/messages',
       badge: unreadCount > 0 ? unreadCount : undefined,
     },
     {
       key: 'leads' as const,
       label: 'Pipeline',
       description: 'Qualified prospects and urgency',
+      to: '/leads',
       badge: hotCount > 0 ? hotCount : undefined,
     },
   ];
+}
 
-  const renderPrimaryContent = () => {
-    if (view.tab === 'dashboard') {
-      return (
-        <DashboardPage
-          messages={messages}
-          msgLoading={msgLoading}
-          msgError={msgError}
-          leads={leads}
-          leadLoading={leadLoading}
-          leadError={leadError}
-          unreadCount={unreadCount}
-          hotCount={hotCount}
-          warmCount={warmCount}
-          onRefreshMessages={fetchMessages}
-          onRefreshLeads={fetchLeads}
-          onOpenMessage={(id) => navigateToView({ tab: 'message-detail', messageId: id })}
-          onDeleteMessage={handleDelete}
-          onOpenLead={(id) => navigateToView({ tab: 'lead-detail', leadId: id })}
-        />
-      );
-    }
-
-    if (view.tab === 'messages') {
-      return (
-        <MessagesPage
-          messages={messages}
-          loading={msgLoading}
-          error={msgError}
-          onRefresh={fetchMessages}
-          onOpen={(id) => navigateToView({ tab: 'message-detail', messageId: id })}
-          onDelete={handleDelete}
-        />
-      );
-    }
-
-    return (
-      <LeadsPage
-        leads={leads}
-        loading={leadLoading}
-        error={leadError}
-        onRefresh={fetchLeads}
-        onOpen={(id) => navigateToView({ tab: 'lead-detail', leadId: id })}
-      />
-    );
-  };
-
-  let mainContent: ReactNode;
-
-  if (view.tab === 'message-detail' && selectedMessage) {
-    mainContent = (
-      <MessageDetailPage
-        message={selectedMessage}
-        onBack={() => navigateToView({ tab: 'messages' })}
-        onMarkRead={(id) => {
-          markRead(id);
-          navigateToView({ tab: 'messages' });
-        }}
-        onDelete={handleDelete}
-      />
-    );
-  } else if (view.tab === 'lead-detail' && selectedLead) {
-    mainContent = (
-      <LeadDetailPage
-        lead={selectedLead}
-        onBack={() => navigateToView({ tab: 'leads' })}
-        onUpdateState={(id, state) => updateState(id, state)}
-      />
-    );
-  } else {
-    mainContent = renderPrimaryContent();
+function getPrimaryContent(pathname: string): ReactNode {
+  if (pathname === '/') {
+    return <DashboardPage />;
   }
+
+  if (pathname === '/messages') {
+    return <MessagesPage />;
+  }
+
+  if (pathname === '/leads') {
+    return <LeadsPage />;
+  }
+
+  return <Navigate to="/" replace />;
+}
+
+function getMainContent({
+  messageDetailMatch,
+  leadDetailMatch,
+  selectedMessage,
+  selectedLead,
+  msgLoading,
+  detailLoading,
+  primaryContent,
+}: Readonly<{
+  messageDetailMatch: ReturnType<typeof useMatch>;
+  leadDetailMatch: ReturnType<typeof useMatch>;
+  selectedMessage: Message | null;
+  selectedLead: Lead | null;
+  msgLoading: boolean;
+  detailLoading: boolean;
+  primaryContent: ReactNode;
+}>): ReactNode {
+  if (messageDetailMatch) {
+    if (selectedMessage) {
+      return <MessageDetailPage message={selectedMessage} />;
+    }
+
+    return msgLoading ? <LoadingIndicator /> : <Navigate to="/messages" replace />;
+  }
+
+  if (leadDetailMatch) {
+    if (selectedLead) {
+      return <LeadDetailPage lead={selectedLead} />;
+    }
+
+    return detailLoading ? <LoadingIndicator /> : <Navigate to="/leads" replace />;
+  }
+
+  return primaryContent;
+}
+
+export default function App() {
+  const { messages, msgLoading, unreadCount, leads, leadDetail, detailLoading, fetchLeadDetail, hotCount } = useHeliosData();
+  const location = useLocation();
+  const messageDetailMatch = useMatch('/messages/:messageId');
+  const leadDetailMatch = useMatch('/leads/:leadId');
+
+  const currentView = getViewFromPath(
+    location.pathname,
+    messageDetailMatch?.params.messageId,
+    leadDetailMatch?.params.leadId,
+  );
+  const selectedMessage = messageDetailMatch?.params.messageId
+    ? messages.find((message: Message) => message.id === messageDetailMatch.params.messageId) ?? null
+    : null;
+  const selectedLead = leadDetailMatch?.params.leadId
+    ? (leadDetail || leads.find((lead: Lead) => lead.id === leadDetailMatch.params.leadId) || null)
+    : null;
+
+  const isMessagesRoute = location.pathname === '/messages' || Boolean(messageDetailMatch);
+  const isLeadsRoute = location.pathname === '/leads' || Boolean(leadDetailMatch);
+  const isKnownRoute = location.pathname === '/' || isMessagesRoute || isLeadsRoute;
+
+  useEffect(() => {
+    const leadId = leadDetailMatch?.params.leadId;
+    if (leadId) {
+      fetchLeadDetail(leadId);
+    }
+  }, [fetchLeadDetail, leadDetailMatch]);
+
+  const isDetailView = Boolean(messageDetailMatch || leadDetailMatch);
+  const pageTitle = getPageTitle(currentView.tab);
+  const pageDescription = isDetailView
+    ? 'Review a single record with full context, then step back into the larger workflow when needed.'
+    : 'The app is split into overview, inbox, and pipeline sections so navigation stays stable as the data changes.';
+
+  const pageTabs = getPageTabs(unreadCount, hotCount);
+  const primaryContent = getPrimaryContent(location.pathname);
+  const mainContent = getMainContent({
+    messageDetailMatch,
+    leadDetailMatch,
+    selectedMessage,
+    selectedLead,
+    msgLoading,
+    detailLoading,
+    primaryContent,
+  });
 
   return (
     <div className="flex min-h-screen bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_24%),linear-gradient(180deg,#020617_0%,#020617_42%,#111827_100%)] text-gray-100">
-      {/* Sidebar */}
       <aside className="hidden w-72 flex-col border-r border-gray-800/80 bg-gray-950/80 p-5 lg:flex">
         <div className="mb-8 flex items-center gap-3">
           <span className="text-xl">☀️</span>
@@ -216,10 +169,11 @@ export default function App() {
         </div>
 
         <nav className="flex flex-col gap-2">
-          <button
-            onClick={() => navigateToView({ tab: 'dashboard' })}
-            className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
-              view.tab === 'dashboard' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => `flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
+              isActive ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
           >
             <span>📊</span>
@@ -227,11 +181,12 @@ export default function App() {
               <span>Overview</span>
               <span className="text-xs text-gray-500">Metrics and recent movement</span>
             </div>
-          </button>
-          <button
-            onClick={() => navigateToView({ tab: 'messages' })}
-            className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
-              view.tab === 'messages' || view.tab === 'message-detail' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
+          </NavLink>
+
+          <NavLink
+            to="/messages"
+            className={({ isActive }) => `flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
+              isActive ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -246,11 +201,12 @@ export default function App() {
                 {unreadCount}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => navigateToView({ tab: 'leads' })}
-            className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
-              view.tab === 'leads' || view.tab === 'lead-detail' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
+          </NavLink>
+
+          <NavLink
+            to="/leads"
+            className={({ isActive }) => `flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
+              isActive ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -265,7 +221,7 @@ export default function App() {
                 {hotCount}
               </span>
             )}
-          </button>
+          </NavLink>
         </nav>
 
         <div className="mt-auto rounded-2xl border border-gray-800 bg-gray-900/50 p-4 text-sm text-gray-400">
@@ -274,7 +230,6 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
           <header className="mb-6 rounded-3xl border border-gray-800/80 bg-gray-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.45)] sm:p-6">
@@ -288,11 +243,12 @@ export default function App() {
               {!isDetailView && (
                 <div className="grid gap-3 sm:grid-cols-3">
                   {pageTabs.map((tab) => (
-                    <button
+                    <NavLink
                       key={tab.key}
-                      onClick={() => navigateToView({ tab: tab.key })}
-                      className={`rounded-2xl border px-4 py-3 text-left transition ${
-                        view.tab === tab.key
+                      to={tab.to}
+                      end={tab.key === 'dashboard'}
+                      className={({ isActive }) => `rounded-2xl border px-4 py-3 text-left transition ${
+                        isActive
                           ? 'border-cyan-500/40 bg-cyan-500/10 text-white'
                           : 'border-gray-800 bg-gray-950/55 text-gray-400 hover:border-gray-700 hover:text-gray-200'
                       }`}
@@ -304,20 +260,14 @@ export default function App() {
                         )}
                       </div>
                       <p className="mt-1 text-xs text-gray-500">{tab.description}</p>
-                    </button>
+                    </NavLink>
                   ))}
                 </div>
               )}
             </div>
           </header>
 
-        {mainContent}
-
-        {detailLoading && view.tab === 'lead-detail' && (
-          <div className="mt-4 flex items-center justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
-          </div>
-        )}
+          {isKnownRoute ? mainContent : <Navigate to="/" replace />}
         </div>
       </main>
     </div>

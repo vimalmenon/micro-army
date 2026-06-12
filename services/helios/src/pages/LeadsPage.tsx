@@ -1,41 +1,38 @@
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { DashboardSection } from '../components/DashboardSection';
+import { useHeliosData } from '../context/HeliosDataContext';
 import { formatTime, scoreColor, sourceIcon, stateColor, urgencyColor } from '../lib/helios';
 import type { Lead } from '../lib/types';
 
 export function LeadsPage({
   leads,
-  loading,
-  error,
-  onRefresh,
-  onOpen,
 }: Readonly<{
-  leads: Lead[];
-  loading: boolean;
-  error: string | null;
-  onRefresh: () => void;
-  onOpen: (id: string) => void;
+  leads?: Lead[];
 }>) {
+  const navigate = useNavigate();
+  const { leads: allLeads, leadLoading, leadError, fetchLeads } = useHeliosData();
+  const visibleLeads = leads ?? allLeads;
   let content: ReactNode;
 
-  if (loading) {
+  if (leadLoading) {
     content = (
       <div className="flex items-center justify-center py-16">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
       </div>
     );
-  } else if (error) {
-    content = <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-8 text-center text-sm text-red-300">{error}</div>;
-  } else if (leads.length === 0) {
+  } else if (leadError) {
+    content = <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-8 text-center text-sm text-red-300">{leadError}</div>;
+  } else if (visibleLeads.length === 0) {
     content = <div className="rounded-xl border border-gray-800 bg-gray-950/40 px-5 py-8 text-center text-sm text-gray-500">No leads yet. Pythia runs daily at 12:00 HKT.</div>;
   } else {
     content = (
       <div className="space-y-3">
-        {leads.map((lead) => (
+        {visibleLeads.map((lead) => (
           <button
             key={lead.id}
-            onClick={() => onOpen(lead.id)}
+            onClick={() => navigate(`/leads/${lead.id}`)}
             className="flex w-full flex-col gap-3 rounded-2xl border border-gray-800/80 bg-gray-950/55 p-4 text-left transition hover:border-gray-700 hover:bg-gray-950/80 lg:flex-row lg:items-center"
           >
             <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -68,7 +65,7 @@ export function LeadsPage({
       description="Prioritized prospects, scored by urgency and fit so outreach can move without context switching."
       action={
         <button
-          onClick={onRefresh}
+          onClick={fetchLeads}
           className="rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white"
         >
           Refresh pipeline

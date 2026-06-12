@@ -1,21 +1,21 @@
+import { useNavigate } from 'react-router-dom';
+
+import { useHeliosData } from '../context/HeliosDataContext';
 import { formatDate, formatTime } from '../lib/helios';
 import type { Message } from '../lib/types';
 
 export function MessageDetailPage({
   message,
-  onBack,
-  onMarkRead,
-  onDelete,
 }: Readonly<{
   message: Message;
-  onBack: () => void;
-  onMarkRead: (id: string) => void;
-  onDelete: (id: string) => void;
 }>) {
+  const navigate = useNavigate();
+  const { markRead, deleteMessage } = useHeliosData();
+
   return (
     <div className="space-y-6">
       <button
-        onClick={onBack}
+        onClick={() => navigate('/messages')}
         className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-gray-200"
       >
         ← Messages
@@ -36,7 +36,10 @@ export function MessageDetailPage({
             </span>
             {!message.read && (
               <button
-                onClick={() => onMarkRead(message.id)}
+                onClick={() => {
+                  markRead(message.id);
+                  navigate('/messages');
+                }}
                 className="rounded-md bg-cyan-600/20 px-3 py-1 text-xs font-medium text-cyan-400 transition hover:bg-cyan-600/30"
               >
                 Mark Read
@@ -44,7 +47,10 @@ export function MessageDetailPage({
             )}
             <button
               onClick={() => {
-                if (globalThis.confirm('Delete this message?')) onDelete(message.id);
+                if (globalThis.confirm('Delete this message?')) {
+                  deleteMessage(message.id);
+                  navigate('/messages');
+                }
               }}
               className="rounded-md bg-red-600/20 px-3 py-1 text-xs font-medium text-red-400 transition hover:bg-red-600/30"
             >

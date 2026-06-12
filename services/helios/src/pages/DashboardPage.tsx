@@ -1,7 +1,7 @@
+import { useHeliosData } from '../context/HeliosDataContext';
 import { DashboardSection } from '../components/DashboardSection';
 import { LeadsPage } from './LeadsPage';
 import { MessagesPage } from './MessagesPage';
-import type { Lead, Message } from '../lib/types';
 
 function OverviewSection({
   messageCount,
@@ -39,37 +39,9 @@ function OverviewSection({
   );
 }
 
-export function DashboardPage({
-  messages,
-  msgLoading,
-  msgError,
-  leads,
-  leadLoading,
-  leadError,
-  unreadCount,
-  hotCount,
-  warmCount,
-  onRefreshMessages,
-  onRefreshLeads,
-  onOpenMessage,
-  onDeleteMessage,
-  onOpenLead,
-}: Readonly<{
-  messages: Message[];
-  msgLoading: boolean;
-  msgError: string | null;
-  leads: Lead[];
-  leadLoading: boolean;
-  leadError: string | null;
-  unreadCount: number;
-  hotCount: number;
-  warmCount: number;
-  onRefreshMessages: () => void;
-  onRefreshLeads: () => void;
-  onOpenMessage: (id: string) => void;
-  onDeleteMessage: (id: string) => void;
-  onOpenLead: (id: string) => void;
-}>) {
+export function DashboardPage() {
+  const { messages, leads, unreadCount, hotCount, warmCount } = useHeliosData();
+
   return (
     <div className="space-y-6">
       <div className="grid gap-3 rounded-2xl border border-gray-800 bg-gray-900/45 p-4 md:grid-cols-3">
@@ -104,19 +76,10 @@ export function DashboardPage({
 
       <MessagesPage
         messages={messages.slice(0, 5)}
-        loading={msgLoading}
-        error={msgError}
-        onRefresh={onRefreshMessages}
-        onOpen={onOpenMessage}
-        onDelete={onDeleteMessage}
       />
 
       <LeadsPage
         leads={leads.slice(0, 6)}
-        loading={leadLoading}
-        error={leadError}
-        onRefresh={onRefreshLeads}
-        onOpen={onOpenLead}
       />
     </div>
   );
