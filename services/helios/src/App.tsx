@@ -1,37 +1,104 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { useLeads } from './hooks/useLeads';
 import { useMessages } from './hooks/useMessages';
 import { getPageTitle } from './lib/helios';
-import type { ViewState } from './lib/types';
+import type { Lead, Message, ViewState } from './lib/types';
 import { DashboardPage } from './pages/DashboardPage';
 import { LeadDetailPage } from './pages/LeadDetailPage';
 import { LeadsPage } from './pages/LeadsPage';
 import { MessageDetailPage } from './pages/MessageDetailPage';
 import { MessagesPage } from './pages/MessagesPage';
 
+function getViewFromLocation(): ViewState {
+  const params = new URLSearchParams(globalThis.location.search);
+  const page = params.get('page');
+  const messageId = params.get('messageId');
+  const leadId = params.get('leadId');
+
+  if (page === 'messages') {
+    return messageId ? { tab: 'message-detail', messageId } : { tab: 'messages' };
+  }
+
+  if (page === 'leads') {
+    return leadId ? { tab: 'lead-detail', leadId } : { tab: 'leads' };
+  }
+
+  return { tab: 'dashboard' };
+}
+
+function getUrlForView(view: ViewState): string {
+  const url = new URL(globalThis.location.href);
+
+  url.searchParams.delete('page');
+  url.searchParams.delete('messageId');
+  url.searchParams.delete('leadId');
+
+  if (view.tab === 'messages') {
+    url.searchParams.set('page', 'messages');
+    url.hash = '';
+  } else if (view.tab === 'message-detail') {
+    url.searchParams.set('page', 'messages');
+    url.searchParams.set('messageId', view.messageId);
+    url.hash = '';
+  } else if (view.tab === 'leads') {
+    url.searchParams.set('page', 'leads');
+    url.hash = '';
+  } else if (view.tab === 'lead-detail') {
+    url.searchParams.set('page', 'leads');
+    url.searchParams.set('leadId', view.leadId);
+    url.hash = '';
+  }
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export default function App() {
-  const [view, setView] = useState<ViewState>({ tab: 'dashboard' });
+  const [view, setView] = useState<ViewState>(() => getViewFromLocation());
   const { messages, loading: msgLoading, error: msgError, unreadCount, fetchMessages, markRead, deleteMessage } = useMessages();
   const { leads, loading: leadLoading, error: leadError, leadDetail, detailLoading, fetchLeads, fetchLeadDetail, updateState } = useLeads();
 
-  const selectedMessage = view.tab === 'message-detail' ? messages.find((m) => m.id === view.messageId) : null;
-  const selectedLead = view.tab === 'lead-detail' ? (leadDetail || leads.find((l) => l.id === view.leadId)) : null;
+  const navigateToView = useCallback((nextView: ViewState, mode: 'push' | 'replace' = 'push') => {
+    setView(nextView);
 
-  // Load lead detail when navigating to it
+    const nextUrl = getUrlForView(nextView);
+    const currentUrl = `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash}`;
+
+    if (nextUrl !== currentUrl) {
+      globalThis.history[mode === 'replace' ? 'replaceState' : 'pushState'](null, '', nextUrl);
+    }
+  }, []);
+
+  const selectedMessage = view.tab === 'message-detail' ? messages.find((message: Message) => message.id === view.messageId) : null;
+  const selectedLead = view.tab === 'lead-detail' ? (leadDetail || leads.find((lead: Lead) => lead.id === view.leadId)) : null;
+
   useEffect(() => {
     if (view.tab === 'lead-detail') {
       fetchLeadDetail(view.leadId);
     }
-  }, []);
+  }, [fetchLeadDetail, view]);
+
+  useEffect(() => {
+    navigateToView(getViewFromLocation(), 'replace');
+
+    const handlePopState = () => {
+      setView(getViewFromLocation());
+    };
+
+    globalThis.addEventListener('popstate', handlePopState);
+
+    return () => {
+      globalThis.removeEventListener('popstate', handlePopState);
+    };
+  }, [navigateToView]);
 
   const handleDelete = (id: string) => {
     deleteMessage(id);
-    if (view.tab === 'message-detail' && view.messageId === id) setView({ tab: 'dashboard' });
+    if (view.tab === 'message-detail' && view.messageId === id) navigateToView({ tab: 'messages' });
   };
 
-  const hotCount = leads.filter((l) => l.score >= 8).length;
-  const warmCount = leads.filter((l) => l.score >= 5 && l.score < 8).length;
+  const hotCount = leads.filter((lead: Lead) => lead.score >= 8).length;
+  const warmCount = leads.filter((lead: Lead) => lead.score >= 5 && lead.score < 8).length;
   const isDetailView = view.tab === 'message-detail' || view.tab === 'lead-detail';
   const pageTitle = getPageTitle(view.tab);
   const pageDescription = isDetailView
@@ -73,9 +140,9 @@ export default function App() {
           warmCount={warmCount}
           onRefreshMessages={fetchMessages}
           onRefreshLeads={fetchLeads}
-          onOpenMessage={(id) => setView({ tab: 'message-detail', messageId: id })}
+          onOpenMessage={(id) => navigateToView({ tab: 'message-detail', messageId: id })}
           onDeleteMessage={handleDelete}
-          onOpenLead={(id) => setView({ tab: 'lead-detail', leadId: id })}
+          onOpenLead={(id) => navigateToView({ tab: 'lead-detail', leadId: id })}
         />
       );
     }
@@ -87,7 +154,7 @@ export default function App() {
           loading={msgLoading}
           error={msgError}
           onRefresh={fetchMessages}
-          onOpen={(id) => setView({ tab: 'message-detail', messageId: id })}
+          onOpen={(id) => navigateToView({ tab: 'message-detail', messageId: id })}
           onDelete={handleDelete}
         />
       );
@@ -99,7 +166,7 @@ export default function App() {
         loading={leadLoading}
         error={leadError}
         onRefresh={fetchLeads}
-        onOpen={(id) => setView({ tab: 'lead-detail', leadId: id })}
+        onOpen={(id) => navigateToView({ tab: 'lead-detail', leadId: id })}
       />
     );
   };
@@ -110,10 +177,10 @@ export default function App() {
     mainContent = (
       <MessageDetailPage
         message={selectedMessage}
-        onBack={() => setView({ tab: 'messages' })}
+        onBack={() => navigateToView({ tab: 'messages' })}
         onMarkRead={(id) => {
           markRead(id);
-          setView({ tab: 'messages' });
+          navigateToView({ tab: 'messages' });
         }}
         onDelete={handleDelete}
       />
@@ -122,7 +189,7 @@ export default function App() {
     mainContent = (
       <LeadDetailPage
         lead={selectedLead}
-        onBack={() => setView({ tab: 'leads' })}
+        onBack={() => navigateToView({ tab: 'leads' })}
         onUpdateState={(id, state) => updateState(id, state)}
       />
     );
@@ -150,7 +217,7 @@ export default function App() {
 
         <nav className="flex flex-col gap-2">
           <button
-            onClick={() => setView({ tab: 'dashboard' })}
+            onClick={() => navigateToView({ tab: 'dashboard' })}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
               view.tab === 'dashboard' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
@@ -162,7 +229,7 @@ export default function App() {
             </div>
           </button>
           <button
-            onClick={() => setView({ tab: 'messages' })}
+            onClick={() => navigateToView({ tab: 'messages' })}
             className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
               view.tab === 'messages' || view.tab === 'message-detail' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
@@ -181,7 +248,7 @@ export default function App() {
             )}
           </button>
           <button
-            onClick={() => setView({ tab: 'leads' })}
+            onClick={() => navigateToView({ tab: 'leads' })}
             className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
               view.tab === 'leads' || view.tab === 'lead-detail' ? 'bg-cyan-600/20 text-cyan-300 ring-1 ring-cyan-500/30' : 'text-gray-400 hover:bg-gray-900 hover:text-gray-200'
             }`}
@@ -223,7 +290,7 @@ export default function App() {
                   {pageTabs.map((tab) => (
                     <button
                       key={tab.key}
-                      onClick={() => setView({ tab: tab.key })}
+                      onClick={() => navigateToView({ tab: tab.key })}
                       className={`rounded-2xl border px-4 py-3 text-left transition ${
                         view.tab === tab.key
                           ? 'border-cyan-500/40 bg-cyan-500/10 text-white'
