@@ -9,7 +9,7 @@ import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
 import OptionsMenu from './OptionsMenu';
 
-const drawerWidth = 260;
+const drawerWidth = 320;
 
 const Drawer = styled(MuiDrawer)({
   width: drawerWidth,
