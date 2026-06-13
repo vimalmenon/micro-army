@@ -1,86 +1,92 @@
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import { useNavigate } from 'react-router-dom';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useHeliosData } from '../context/HeliosDataContext';
-import { DashboardSection } from '../components/DashboardSection';
-import { LeadsPage } from './LeadsPage';
-import { MessagesPage } from './MessagesPage';
+import MainGrid from '../components/MainGrid';
+import { formatTime } from '../lib/helios';
+import type { Lead, Message } from '../lib/types';
 
-function OverviewSection({
-  messageCount,
-  unreadCount,
-  leadCount,
-  hotCount,
-  warmCount,
-}: Readonly<{
-  messageCount: number;
-  unreadCount: number;
-  leadCount: number;
-  hotCount: number;
-  warmCount: number;
-}>) {
-  const stats = [
-    { label: 'Total Messages', value: messageCount, tone: 'text-white' },
-    { label: 'Unread Inbox', value: unreadCount, tone: 'text-cyan-400' },
-    { label: 'Lead Pipeline', value: leadCount, tone: 'text-white' },
-    { label: 'Hot Leads', value: hotCount, tone: 'text-green-400' },
-    { label: 'Warm Leads', value: warmCount, tone: 'text-yellow-400' },
+function RecentMessagesGrid({ messages }: { messages: Message[] }) {
+  const navigate = useNavigate();
+  const columns: GridColDef[] = [
+    { field: 'name', headerName: 'From', width: 180 },
+    { field: 'subject', headerName: 'Subject', width: 250 },
+    { field: 'created_at', headerName: 'Received', width: 150 },
+    { field: 'read', headerName: 'Status', width: 100 },
   ];
 
+  const rows = messages.map((m) => ({
+    id: m.id,
+    name: m.name,
+    subject: m.subject,
+    created_at: formatTime(m.created_at),
+    read: m.read ? 'Read' : 'Unread',
+  }));
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-      {stats.map((stat) => (
-        <div
-          key={stat.label}
-          className="rounded-2xl border border-gray-800/80 bg-gray-950/60 p-4"
-        >
-          <p className={`text-3xl font-semibold ${stat.tone}`}>{stat.value}</p>
-          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-500">{stat.label}</p>
-        </div>
-      ))}
-    </div>
+    <Box sx={{ height: 350, width: '100%' }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        density="compact"
+        hideFooter
+        onRowClick={(params) => navigate(`/messages/${params.id}`)}
+        sx={{ cursor: 'pointer' }}
+      />
+    </Box>
+  );
+}
+
+function RecentLeadsGrid({ leads }: { leads: Lead[] }) {
+  const navigate = useNavigate();
+  const columns: GridColDef[] = [
+    { field: 'company', headerName: 'Company', width: 180 },
+    { field: 'score', headerName: 'Score', width: 80 },
+    { field: 'urgency', headerName: 'Urgency', width: 100 },
+    { field: 'state', headerName: 'State', width: 120 },
+    { field: 'pain_point', headerName: 'Pain Point', width: 300 },
+  ];
+
+  const rows = leads.map((l) => ({
+    id: l.id,
+    company: l.company || l.title,
+    score: `${l.score}/10`,
+    urgency: l.urgency,
+    state: l.state,
+    pain_point: l.pain_point,
+  }));
+
+  return (
+    <Box sx={{ height: 350, width: '100%' }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        density="compact"
+        hideFooter
+        onRowClick={(params) => navigate(`/leads/${params.id}`)}
+        sx={{ cursor: 'pointer' }}
+      />
+    </Box>
   );
 }
 
 export function DashboardPage() {
-  const { messages, leads, unreadCount, hotCount, warmCount } = useHeliosData();
+  const { messages, leads } = useHeliosData();
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-3 rounded-2xl border border-gray-800 bg-gray-900/45 p-4 md:grid-cols-3">
-        {[
-          { label: 'Overview', href: '#overview' },
-          { label: 'Inbox', href: '#messages' },
-          { label: 'Pipeline', href: '#leads' },
-        ].map((item) => (
-          <a
-            key={item.href}
-            href={item.href}
-            className="rounded-xl border border-gray-800 bg-gray-950/60 px-4 py-3 text-sm text-gray-300 transition hover:border-cyan-500/40 hover:text-white"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
+    <>
+      <MainGrid />
 
-      <DashboardSection
-        id="overview"
-        title="Signal overview"
-        description="A single scan of inbox volume, pipeline pressure, and lead temperature."
-      >
-        <OverviewSection
-          messageCount={messages.length}
-          unreadCount={unreadCount}
-          leadCount={leads.length}
-          hotCount={hotCount}
-          warmCount={warmCount}
-        />
-      </DashboardSection>
+      <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
+        Recent Messages
+      </Typography>
+      <RecentMessagesGrid messages={messages.slice(0, 5)} />
 
-      <MessagesPage
-        messages={messages.slice(0, 5)}
-      />
-
-      <LeadsPage
-        leads={leads.slice(0, 6)}
-      />
-    </div>
+      <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
+        Recent Leads
+      </Typography>
+      <RecentLeadsGrid leads={leads.slice(0, 6)} />
+    </>
   );
 }

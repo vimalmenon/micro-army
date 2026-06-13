@@ -1,137 +1,270 @@
-import { useNavigate } from 'react-router-dom';
-
+import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useHeliosData } from '../context/HeliosDataContext';
-import { LEAD_STATES, formatDate, formatTime, scoreColor, sourceIcon, stateColor, urgencyColor } from '../lib/helios';
+import { LEAD_STATES, formatDate, formatTime } from '../lib/helios';
 import type { Lead } from '../lib/types';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Grid from '@mui/material/Grid';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 
-export function LeadDetailPage({
-  lead,
-}: Readonly<{
-  lead: Lead;
-}>) {
+function EnrichmentField({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary">
+        {label}:
+      </Typography>{' '}
+      <Typography variant="body2">{value}</Typography>
+    </Box>
+  );
+}
+
+function LinkField({ label, href }: { label: string; href: string | null }) {
+  if (!href) return null;
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary">
+        {label}:
+      </Typography>{' '}
+      <Button
+        variant="text"
+        size="small"
+        href={href}
+        target="_blank"
+        endIcon={<OpenInNewRoundedIcon fontSize="small" />}
+        sx={{ textTransform: 'none', p: 0, minWidth: 0 }}
+      >
+        {href.replace(/^https?:\/\//, '').split('/')[0]}
+      </Button>
+    </Box>
+  );
+}
+
+export function LeadDetailPage() {
   const navigate = useNavigate();
-  const { updateState } = useHeliosData();
+  const { leadId } = useParams();
+  const { leads, leadDetail, detailLoading, fetchLeadDetail, updateState } = useHeliosData();
+
+  useEffect(() => {
+    if (leadId) fetchLeadDetail(leadId);
+  }, [fetchLeadDetail, leadId]);
+
+  const lead: Lead | null =
+    leadDetail?.id === leadId
+      ? leadDetail
+      : leads.find((l: Lead) => l.id === leadId) ?? null;
+
+  if (detailLoading) {
+    return (
+      <Box sx={{ py: 4, textAlign: 'center' }}>
+        <Typography color="text.secondary">Loading lead details…</Typography>
+      </Box>
+    );
+  }
+
+  if (!lead) {
+    return (
+      <Box sx={{ py: 4, textAlign: 'center' }}>
+        <Typography color="text.secondary">Lead not found.</Typography>
+        <Button onClick={() => navigate('/leads')} sx={{ mt: 2 }}>
+          Back to Pipeline
+        </Button>
+      </Box>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <button
+    <Box sx={{ maxWidth: 900 }}>
+      <Button
+        startIcon={<ArrowBackRoundedIcon />}
         onClick={() => navigate('/leads')}
-        className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-gray-200"
+        sx={{ mb: 2, color: 'text.secondary' }}
       >
-        ← Leads
-      </button>
+        Leads
+      </Button>
 
-      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{sourceIcon(lead.source)}</span>
-              <h2 className="text-lg font-bold">{lead.company || lead.title}</h2>
-            </div>
-            <p className="mt-1 text-xs text-gray-500">
-              {lead.source} · {lead.url ? <a href={lead.url} target="_blank" className="text-cyan-500 hover:underline">source</a> : 'no URL'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className={`rounded-md px-2.5 py-1 text-xs font-medium ${stateColor(lead.state)}`}>
-              {lead.state}
-            </span>
-            <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${scoreColor(lead.score)}`}>
-              {lead.score}/10
-            </span>
-            <span className={`rounded-md px-2.5 py-1 text-xs font-medium ${urgencyColor(lead.urgency)}`}>
-              {lead.urgency}
-            </span>
-          </div>
-        </div>
-        <div className="mt-2 text-xs text-gray-500">
-          <span>{formatTime(lead.seen_at)}</span>
-          <span className="ml-2 text-gray-600">{formatDate(lead.seen_at)}</span>
-        </div>
-      </div>
+      {/* Header Card */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Box>
+              <Stack direction="row" gap={1} alignItems="center">
+                <Typography variant="h5" fontWeight={700}>
+                  {lead.company || lead.title}
+                </Typography>
+                <Chip label={lead.source} size="small" variant="outlined" />
+              </Stack>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                {formatTime(lead.seen_at)} · {formatDate(lead.seen_at)}
+              </Typography>
+            </Box>
+            <Stack direction="row" gap={1}>
+              <Chip label={lead.state} size="small" />
+              <Chip label={`${lead.score}/10`} size="small" />
+              <Chip label={lead.urgency} size="small" variant="outlined" />
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
-        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Change State</div>
-        <div className="flex flex-wrap gap-2">
-          {LEAD_STATES.map((state) => (
-            <button
-              key={state}
-              onClick={() => updateState(lead.id, state)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                lead.state === state
-                  ? 'bg-cyan-600/30 text-cyan-400 ring-1 ring-cyan-500/50'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
-              }`}
-            >
-              {state}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Pain Point</h3>
-          <p className="text-sm text-gray-300">{lead.pain_point}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Fit Reason</h3>
-          <p className="text-sm text-gray-300">{lead.fit_reason}</p>
-        </div>
-      </div>
-
-      {lead.angle && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Suggested Angle</h3>
-          <p className="text-sm italic text-gray-400">{lead.angle}</p>
-        </div>
-      )}
-
-      <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
-        <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-          Enrichment {lead.enriched_at ? <span className="text-green-500">✓</span> : <span className="text-gray-600">(none yet)</span>}
-        </h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          {lead.website && (
-            <div>
-              <span className="text-gray-500">Website:</span>{' '}
-              <a href={lead.website} target="_blank" className="text-cyan-500 hover:underline">{lead.website}</a>
-            </div>
-          )}
-          {lead.linkedin && (
-            <div>
-              <span className="text-gray-500">LinkedIn:</span>{' '}
-              <a href={lead.linkedin} target="_blank" className="text-cyan-500 hover:underline">profile</a>
-            </div>
-          )}
-          {lead.contact_name && <div><span className="text-gray-500">Contact:</span> {lead.contact_name}{lead.contact_email ? ` (${lead.contact_email})` : ''}</div>}
-          {lead.funding && <div><span className="text-gray-500">Funding:</span> {lead.funding}</div>}
-          {lead.budget_min != null && <div><span className="text-gray-500">Budget:</span> ${lead.budget_min.toLocaleString()}{lead.budget_max ? ` – $${lead.budget_max.toLocaleString()}` : ''} <span className="text-gray-600">({lead.budget_confidence || 'unknown'})</span></div>}
-          {lead.tech_stack.length > 0 && <div className="col-span-2"><span className="text-gray-500">Tech Stack:</span> {lead.tech_stack.join(', ')}</div>}
-          {lead.recent_news.length > 0 && (
-            <div className="col-span-2">
-              <span className="text-gray-500">Recent News:</span>
-              <ul className="mt-1 list-inside list-disc text-gray-400">
-                {lead.recent_news.slice(0, 5).map((newsItem) => <li key={newsItem} className="truncate">{newsItem}</li>)}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {lead.history.length > 1 && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">State History</h3>
-          <div className="space-y-1">
-            {lead.history.map((historyItem) => (
-              <div key={`${historyItem.state}-${historyItem.at}`} className="flex items-center gap-3 text-xs">
-                <span className={`rounded px-2 py-0.5 ${stateColor(historyItem.state)}`}>{historyItem.state}</span>
-                <span className="text-gray-600">{formatDate(historyItem.at)}</span>
-              </div>
+      {/* State Changer */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="subtitle2" gutterBottom>
+            Change State
+          </Typography>
+          <ToggleButtonGroup
+            value={lead.state}
+            exclusive
+            onChange={(_, newState) => {
+              if (newState) updateState(lead.id, newState);
+            }}
+            size="small"
+          >
+            {LEAD_STATES.map((state) => (
+              <ToggleButton key={state} value={state}>
+                {state}
+              </ToggleButton>
             ))}
-          </div>
-        </div>
+          </ToggleButtonGroup>
+        </CardContent>
+      </Card>
+
+      {/* Pain Point & Fit */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="subtitle2" gutterBottom>
+                Pain Point
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {lead.pain_point}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="subtitle2" gutterBottom>
+                Fit Reason
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {lead.fit_reason}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Angle */}
+      {lead.angle && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle2" gutterBottom>
+              Suggested Angle
+            </Typography>
+            <Typography variant="body2" fontStyle="italic" color="text.secondary">
+              {lead.angle}
+            </Typography>
+          </CardContent>
+        </Card>
       )}
-    </div>
+
+      {/* Enrichment */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
+            <Typography variant="subtitle2">Enrichment</Typography>
+            <Chip
+              label={lead.enriched_at ? 'Enriched' : 'None yet'}
+              color={lead.enriched_at ? 'success' : 'default'}
+              size="small"
+            />
+          </Stack>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <LinkField label="Website" href={lead.website} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <LinkField label="LinkedIn" href={lead.linkedin} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <EnrichmentField
+                label="Contact"
+                value={
+                  lead.contact_name
+                    ? `${lead.contact_name}${lead.contact_email ? ` (${lead.contact_email})` : ''}`
+                    : null
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <EnrichmentField label="Funding" value={lead.funding} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              {lead.budget_min != null && (
+                <EnrichmentField
+                  label="Budget"
+                  value={`$${lead.budget_min.toLocaleString()}${lead.budget_max ? ` – $${lead.budget_max.toLocaleString()}` : ''} (${lead.budget_confidence || 'unknown'})`}
+                />
+              )}
+            </Grid>
+            <Grid size={12}>
+              {lead.tech_stack.length > 0 && (
+                <EnrichmentField label="Tech Stack" value={lead.tech_stack.join(', ')} />
+              )}
+            </Grid>
+            {lead.recent_news.length > 0 && (
+              <Grid size={12}>
+                <Typography variant="caption" color="text.secondary">
+                  Recent News:
+                </Typography>
+                <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                  {lead.recent_news.slice(0, 5).map((item) => (
+                    <li key={item}>
+                      <Typography variant="body2" noWrap>
+                        {item}
+                      </Typography>
+                    </li>
+                  ))}
+                </ul>
+              </Grid>
+            )}
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* State History */}
+      {lead.history.length > 1 && (
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle2" gutterBottom>
+              State History
+            </Typography>
+            <Stack gap={1}>
+              {lead.history.map((h) => (
+                <Stack key={`${h.state}-${h.at}`} direction="row" gap={2} alignItems="center">
+                  <Chip label={h.state} size="small" />
+                  <Typography variant="caption" color="text.secondary">
+                    {formatDate(h.at)}
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+    </Box>
   );
 }

@@ -1,67 +1,114 @@
-import { useNavigate } from 'react-router-dom';
-
+import { useNavigate, useParams } from 'react-router-dom';
 import { useHeliosData } from '../context/HeliosDataContext';
 import { formatDate, formatTime } from '../lib/helios';
 import type { Message } from '../lib/types';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 
-export function MessageDetailPage({
-  message,
-}: Readonly<{
-  message: Message;
-}>) {
+export function MessageDetailPage() {
   const navigate = useNavigate();
-  const { markRead, deleteMessage } = useHeliosData();
+  const { messageId } = useParams();
+  const { messages, markRead, deleteMessage } = useHeliosData();
+  const message = messages.find((m: Message) => m.id === messageId) ?? null;
+
+  if (!message) {
+    return (
+      <Box sx={{ py: 4, textAlign: 'center' }}>
+        <Typography color="text.secondary">Message not found.</Typography>
+        <Button onClick={() => navigate('/messages')} sx={{ mt: 2 }}>
+          Back to Inbox
+        </Button>
+      </Box>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <button
+    <Box sx={{ maxWidth: 800 }}>
+      <Button
+        startIcon={<ArrowBackRoundedIcon />}
         onClick={() => navigate('/messages')}
-        className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-gray-200"
+        sx={{ mb: 2, color: 'text.secondary' }}
       >
-        ← Messages
-      </button>
+        Messages
+      </Button>
 
-      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-bold">{message.subject}</h2>
-            <p className="mt-1 text-sm text-gray-400">
-              {message.name} &lt;{message.email}&gt;
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-right text-xs text-gray-500">
-              <div>{formatTime(message.created_at)}</div>
-              <div className="text-gray-600">{formatDate(message.created_at)}</div>
-            </span>
+      <Card variant="outlined">
+        <CardContent>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Box>
+              <Typography variant="h5" fontWeight={700}>
+                {message.subject}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {message.name} &lt;{message.email}&gt;
+              </Typography>
+            </Box>
+            <Stack direction="row" gap={1} alignItems="center">
+              <Chip
+                label={message.read ? 'Read' : 'Unread'}
+                color={message.read ? 'default' : 'primary'}
+                size="small"
+              />
+              <Typography variant="caption" color="text.secondary">
+                <Box>{formatTime(message.created_at)}</Box>
+                <Box>{formatDate(message.created_at)}</Box>
+              </Typography>
+            </Stack>
+          </Stack>
+
+          <Box
+            sx={{
+              mt: 3,
+              p: 2,
+              bgcolor: 'grey.50',
+              borderRadius: 1,
+              whiteSpace: 'pre-wrap',
+              typography: 'body2',
+              lineHeight: 1.8,
+            }}
+          >
+            {message.message}
+          </Box>
+
+          <Stack direction="row" gap={1} sx={{ mt: 3 }}>
             {!message.read && (
-              <button
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<CheckCircleOutlineRoundedIcon />}
                 onClick={() => {
                   markRead(message.id);
                   navigate('/messages');
                 }}
-                className="rounded-md bg-cyan-600/20 px-3 py-1 text-xs font-medium text-cyan-400 transition hover:bg-cyan-600/30"
               >
                 Mark Read
-              </button>
+              </Button>
             )}
-            <button
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={<DeleteOutlineRoundedIcon />}
               onClick={() => {
                 if (globalThis.confirm('Delete this message?')) {
                   deleteMessage(message.id);
                   navigate('/messages');
                 }
               }}
-              className="rounded-md bg-red-600/20 px-3 py-1 text-xs font-medium text-red-400 transition hover:bg-red-600/30"
             >
               Delete
-            </button>
-          </div>
-        </div>
-        <div className="mt-6 whitespace-pre-wrap rounded-lg border border-gray-800 bg-gray-950/50 p-4 text-sm leading-7 text-gray-300">
-          {message.message}
-        </div>
-      </div>
-    </div>
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+    </Box>
   );
 }

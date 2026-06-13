@@ -1,87 +1,121 @@
-import type { ReactNode } from 'react';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import { useNavigate } from 'react-router-dom';
-
-import { DashboardSection } from '../components/DashboardSection';
+import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { useHeliosData } from '../context/HeliosDataContext';
-import { formatDate, formatTime } from '../lib/helios';
+import { formatTime, formatDate } from '../lib/helios';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded';
 import type { Message } from '../lib/types';
 
-export function MessagesPage({
-  messages,
-}: Readonly<{
-  messages?: Message[];
-}>) {
+export function MessagesPage() {
   const navigate = useNavigate();
-  const { messages: allMessages, msgLoading, msgError, fetchMessages, deleteMessage } = useHeliosData();
-  const visibleMessages = messages ?? allMessages;
-  let content: ReactNode;
+  const { messages, msgLoading, msgError, fetchMessages, markRead, deleteMessage } = useHeliosData();
 
-  if (msgLoading) {
-    content = (
-      <div className="flex items-center justify-center py-16">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
-      </div>
-    );
-  } else if (msgError) {
-    content = <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-8 text-center text-sm text-red-300">{msgError}</div>;
-  } else if (visibleMessages.length === 0) {
-    content = <div className="rounded-xl border border-gray-800 bg-gray-950/40 px-5 py-8 text-center text-sm text-gray-500">No messages yet.</div>;
-  } else {
-    content = (
-      <div className="space-y-3">
-        {visibleMessages.map((message) => (
-          <div
-            key={message.id}
-            className="flex flex-col gap-4 rounded-2xl border border-gray-800/80 bg-gray-950/55 p-4 transition hover:border-gray-700 hover:bg-gray-950/80 lg:flex-row lg:items-center"
-          >
-            <button
-              onClick={() => navigate(`/messages/${message.id}`)}
-              className="flex min-w-0 flex-1 items-start gap-4 text-left"
-            >
-              <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${message.read ? 'bg-gray-700' : 'bg-cyan-500'}`} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="truncate text-sm font-medium text-gray-100">{message.name}</span>
-                  <span className="truncate text-xs uppercase tracking-[0.16em] text-gray-500">{message.subject}</span>
-                </div>
-                <p className="mt-2 line-clamp-2 text-sm text-gray-400">{message.message}</p>
-              </div>
-            </button>
-            <div className="flex items-center justify-between gap-3 lg:justify-end">
-              <span className="shrink-0 text-right text-xs text-gray-500">
-                <div>{formatTime(message.created_at)}</div>
-                <div className="text-gray-600">{formatDate(message.created_at)}</div>
-              </span>
-              <button
-                onClick={() => {
-                  if (globalThis.confirm(`Delete message from ${message.name}?`)) deleteMessage(message.id);
-                }}
-                className="shrink-0 rounded-md bg-red-600/15 px-2.5 py-1 text-xs font-medium text-red-300 transition hover:bg-red-600/25"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const columns: GridColDef[] = [
+    {
+      field: 'read',
+      headerName: '',
+      width: 50,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            bgcolor: params.value ? 'grey.400' : 'primary.main',
+          }}
+        />
+      ),
+    },
+    { field: 'name', headerName: 'From', width: 200 },
+    { field: 'email', headerName: 'Email', width: 250 },
+    { field: 'subject', headerName: 'Subject', width: 300 },
+    {
+      field: 'created_at',
+      headerName: 'Received',
+      width: 160,
+      renderCell: (params) => (
+        <Stack>
+          <Typography variant="caption">{formatTime(params.value)}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {formatDate(params.value)}
+          </Typography>
+        </Stack>
+      ),
+    },
+    {
+      field: 'actions',
+      type: 'actions',
+      headerName: 'Actions',
+      width: 100,
+      getActions: (params) => [
+        <GridActionsCellItem
+          key="read"
+          icon={<VisibilityOffRoundedIcon />}
+          label="Mark Read"
+          onClick={() => markRead(params.id as string)}
+          showInMenu
+        />,
+        <GridActionsCellItem
+          key="delete"
+          icon={<DeleteRoundedIcon />}
+          label="Delete"
+          onClick={() => {
+            if (globalThis.confirm(`Delete message from ${params.row.name}?`)) {
+              deleteMessage(params.id as string);
+            }
+          }}
+          showInMenu
+        />,
+      ],
+    },
+  ];
+
+  const rows = messages.map((m: Message) => ({
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    subject: m.subject,
+    message: m.message,
+    read: m.read,
+    created_at: m.created_at,
+  }));
 
   return (
-    <DashboardSection
-      id="messages"
-      title="Inbox"
-      description="Recent contact form submissions with fast access to detail and cleanup actions."
-      action={
-        <button
+    <Box sx={{ width: '100%' }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography component="h2" variant="h6">
+          Inbox
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<RefreshRoundedIcon />}
           onClick={fetchMessages}
-          className="rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white"
         >
-          Refresh inbox
-        </button>
-      }
-    >
-      {content}
-    </DashboardSection>
+          Refresh
+        </Button>
+      </Stack>
+      {msgError && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {msgError}
+        </Typography>
+      )}
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        loading={msgLoading}
+        density="compact"
+        initialState={{ pagination: { paginationModel: { pageSize: 20 } } }}
+        pageSizeOptions={[10, 20, 50]}
+        onRowClick={(params) => navigate(`/messages/${params.id}`)}
+        sx={{ cursor: 'pointer' }}
+        autoHeight
+      />
+    </Box>
   );
 }

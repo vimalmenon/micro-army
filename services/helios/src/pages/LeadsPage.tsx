@@ -1,78 +1,120 @@
-import type { ReactNode } from 'react';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import { useNavigate } from 'react-router-dom';
-
-import { DashboardSection } from '../components/DashboardSection';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useHeliosData } from '../context/HeliosDataContext';
-import { formatTime, scoreColor, sourceIcon, stateColor, urgencyColor } from '../lib/helios';
+import { formatTime } from '../lib/helios';
 import type { Lead } from '../lib/types';
 
-export function LeadsPage({
-  leads,
-}: Readonly<{
-  leads?: Lead[];
-}>) {
-  const navigate = useNavigate();
-  const { leads: allLeads, leadLoading, leadError, fetchLeads } = useHeliosData();
-  const visibleLeads = leads ?? allLeads;
-  let content: ReactNode;
+function ScoreChip({ score }: { score: number }) {
+  const color = score >= 8 ? 'success' : score >= 5 ? 'warning' : 'default';
+  return <Chip label={`${score}/10`} color={color} size="small" variant="outlined" />;
+}
 
-  if (leadLoading) {
-    content = (
-      <div className="flex items-center justify-center py-16">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
-      </div>
-    );
-  } else if (leadError) {
-    content = <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-8 text-center text-sm text-red-300">{leadError}</div>;
-  } else if (visibleLeads.length === 0) {
-    content = <div className="rounded-xl border border-gray-800 bg-gray-950/40 px-5 py-8 text-center text-sm text-gray-500">No leads yet. Pythia runs daily at 12:00 HKT.</div>;
-  } else {
-    content = (
-      <div className="space-y-3">
-        {visibleLeads.map((lead) => (
-          <button
-            key={lead.id}
-            onClick={() => navigate(`/leads/${lead.id}`)}
-            className="flex w-full flex-col gap-3 rounded-2xl border border-gray-800/80 bg-gray-950/55 p-4 text-left transition hover:border-gray-700 hover:bg-gray-950/80 lg:flex-row lg:items-center"
-          >
-            <div className="flex min-w-0 flex-1 items-start gap-3">
-              <span className="mt-0.5 text-lg">{sourceIcon(lead.source)}</span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate text-sm font-medium text-gray-100">{lead.company || lead.title}</span>
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${stateColor(lead.state)}`}>
-                    {lead.state}
-                  </span>
-                </div>
-                <p className="mt-2 line-clamp-2 text-sm text-gray-400">{lead.pain_point}</p>
-              </div>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
-              <span className={`rounded px-2 py-0.5 font-bold ${scoreColor(lead.score)}`}>{lead.score}/10</span>
-              <span className={`rounded px-2 py-0.5 ${urgencyColor(lead.urgency)}`}>{lead.urgency}</span>
-              <span className="text-gray-500">{formatTime(lead.seen_at)}</span>
-            </div>
-          </button>
-        ))}
-      </div>
-    );
-  }
+function StateChip({ state }: { state: string }) {
+  const colorMap: Record<string, 'info' | 'primary' | 'success' | 'warning' | 'default'> = {
+    discovery: 'info',
+    contacted: 'primary',
+    qualified: 'success',
+    won: 'warning',
+    not_interested: 'default',
+  };
+  return <Chip label={state} color={colorMap[state] || 'default'} size="small" />;
+}
+
+export function LeadsPage() {
+  const navigate = useNavigate();
+  const { leads, leadLoading, leadError, fetchLeads } = useHeliosData();
+
+  const columns: GridColDef[] = [
+    { field: 'source', headerName: 'Source', width: 100 },
+    {
+      field: 'company',
+      headerName: 'Company',
+      width: 200,
+      renderCell: (params) => (
+        <Typography variant="body2" fontWeight={500} noWrap>
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: 'score',
+      headerName: 'Score',
+      width: 100,
+      renderCell: (params) => <ScoreChip score={params.value} />,
+    },
+    {
+      field: 'state',
+      headerName: 'State',
+      width: 130,
+      renderCell: (params) => <StateChip state={params.value} />,
+    },
+    {
+      field: 'urgency',
+      headerName: 'Urgency',
+      width: 100,
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" variant="outlined" />
+      ),
+    },
+    { field: 'pain_point', headerName: 'Pain Point', width: 350 },
+    {
+      field: 'seen_at',
+      headerName: 'Seen',
+      width: 100,
+      renderCell: (params) => (
+        <Typography variant="caption">{formatTime(params.value)}</Typography>
+      ),
+    },
+  ];
+
+  const rows = leads.map((l: Lead) => ({
+    id: l.id,
+    source: l.source,
+    company: l.company || l.title,
+    score: l.score,
+    state: l.state,
+    urgency: l.urgency,
+    pain_point: l.pain_point,
+    seen_at: l.seen_at,
+  }));
 
   return (
-    <DashboardSection
-      id="leads"
-      title="Pipeline"
-      description="Prioritized prospects, scored by urgency and fit so outreach can move without context switching."
-      action={
-        <button
+    <Box sx={{ width: '100%' }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography component="h2" variant="h6">
+          Pipeline
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<RefreshRoundedIcon />}
           onClick={fetchLeads}
-          className="rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white"
         >
-          Refresh pipeline
-        </button>
-      }
-    >
-      {content}
-    </DashboardSection>
+          Refresh
+        </Button>
+      </Stack>
+      {leadError && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {leadError}
+        </Typography>
+      )}
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        loading={leadLoading}
+        density="compact"
+        initialState={{ pagination: { paginationModel: { pageSize: 20 } } }}
+        pageSizeOptions={[10, 20, 50]}
+        onRowClick={(params) => navigate(`/leads/${params.id}`)}
+        sx={{ cursor: 'pointer' }}
+        autoHeight
+      />
+    </Box>
   );
 }
