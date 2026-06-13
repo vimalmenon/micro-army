@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { API_BASE } from '../lib/helios';
+import { API_BASE, apiHeaders } from '../lib/helios';
 import type { Message } from '../lib/types';
 
 export function useMessages() {
@@ -14,7 +14,7 @@ export function useMessages() {
     setError(null);
     try {
       const resp = await fetch(`${API_BASE}/messages`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -32,7 +32,7 @@ export function useMessages() {
     try {
       const resp = await fetch(`${API_BASE}/messages/${id}/read`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setMessages((prev) =>
@@ -48,7 +48,7 @@ export function useMessages() {
     try {
       const resp = await fetch(`${API_BASE}/messages/${id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setMessages((prev) => prev.filter((message) => message.id !== id));

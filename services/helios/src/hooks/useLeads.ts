@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { API_BASE } from '../lib/helios';
+import { API_BASE, apiHeaders } from '../lib/helios';
 import type { Lead } from '../lib/types';
 
 export function useLeads() {
@@ -15,7 +15,7 @@ export function useLeads() {
     setError(null);
     try {
       const resp = await fetch(`${API_BASE}/leads`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -32,7 +32,7 @@ export function useLeads() {
     setDetailLoading(true);
     try {
       const resp = await fetch(`${API_BASE}/leads/${id}`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -48,7 +48,7 @@ export function useLeads() {
     try {
       const resp = await fetch(`${API_BASE}/leads/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
         body: JSON.stringify({ state: newState }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);

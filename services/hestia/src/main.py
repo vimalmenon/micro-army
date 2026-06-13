@@ -9,10 +9,11 @@ decoupling the Helios admin dashboard from Angelos and Pythia.
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Annotated
 from urllib.parse import quote as url_quote
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -55,13 +56,25 @@ app.add_middleware(
         "https://admin.completeautomate.com",
     ],
     allow_methods=["GET", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
     max_age=600,
 )
 
 # ─── Prometheus metrics ─────────────────────────
 app.add_middleware(MetricsMiddleware)
 app.add_route("/metrics", metrics_handler, include_in_schema=False)
+
+
+# ─── API Key Auth ────────────────────────────────
+
+
+async def require_api_key(x_api_key: Annotated[str | None, Header()] = None):
+    """Require a valid API key from the X-API-Key header."""
+    if not settings.api_key:
+        logger.warning("API_KEY not configured — auth disabled")
+        return
+    if not x_api_key or x_api_key != settings.api_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 def _now() -> str:
@@ -79,7 +92,7 @@ async def health():
 # ─── Messages ────────────────────────────────────
 
 
-@app.get("/messages", response_model=MessageListResponse, tags=["messages"])
+@app.get("/messages", response_model=MessageListResponse, tags=["messages"], dependencies=[Depends(require_api_key)])
 async def list_messages(limit: int = 50):
     """List all contact form messages, newest first."""
     dynamo_svc_url = settings.dynamo_svc_url.rstrip("/")
@@ -112,7 +125,7 @@ async def list_messages(limit: int = 50):
     return MessageListResponse(messages=messages, count=len(messages))
 
 
-@app.get("/messages/{message_id}", response_model=MessageDetail, tags=["messages"])
+@app.get("/messages/{message_id}", response_model=MessageDetail, tags=["messages"], dependencies=[Depends(require_api_key)])
 async def get_message(message_id: str):
     """Get a single message by ID."""
     dynamo_svc_url = settings.dynamo_svc_url.rstrip("/")
@@ -137,7 +150,7 @@ async def get_message(message_id: str):
     return MessageDetail(**data["item"])
 
 
-@app.patch("/messages/{message_id}/read", response_model=MessageUpdateResponse, tags=["messages"])
+@app.patch("/messages/{message_id}/read", response_model=MessageUpdateResponse, tags=["messages"], dependencies=[Depends(require_api_key)])
 async def mark_read(message_id: str):
     """Mark a message as read."""
     dynamo_svc_url = settings.dynamo_svc_url.rstrip("/")
@@ -166,7 +179,7 @@ async def mark_read(message_id: str):
     return MessageUpdateResponse(id=message_id, read=True)
 
 
-@app.delete("/messages/{message_id}", response_model=MessageDeleteResponse, tags=["messages"])
+@app.delete("/messages/{message_id}", response_model=MessageDeleteResponse, tags=["messages"], dependencies=[Depends(require_api_key)])
 async def delete_message(message_id: str):
     """Delete a contact form message by ID."""
     dynamo_svc_url = settings.dynamo_svc_url.rstrip("/")
@@ -194,7 +207,7 @@ async def delete_message(message_id: str):
 # ─── Leads (proxy to Pythia) ──────────────────────
 
 
-@app.get("/leads", tags=["leads"])
+@app.get("/leads", tags=["leads"], dependencies=[Depends(require_api_key)])
 async def list_leads(limit: int = 100):
     """List all leads — proxies to Pythia."""
     pythia_url = settings.pythia_svc_url.rstrip("/")
@@ -203,7 +216,7 @@ async def list_leads(limit: int = 100):
     return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
-@app.get("/leads/{lead_id}", tags=["leads"])
+@app.get("/leads/{lead_id}", tags=["leads"], dependencies=[Depends(require_api_key)])
 async def get_lead(lead_id: str):
     """Get a single lead by ID — proxies to Pythia."""
     pythia_url = settings.pythia_svc_url.rstrip("/")
@@ -212,7 +225,7 @@ async def get_lead(lead_id: str):
     return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
-@app.patch("/leads/{lead_id}", tags=["leads"])
+@app.patch("/leads/{lead_id}", tags=["leads"], dependencies=[Depends(require_api_key)])
 async def update_lead_state(lead_id: str, body: dict):
     """Update a lead's state — proxies to Pythia."""
     pythia_url = settings.pythia_svc_url.rstrip("/")

@@ -2,6 +2,17 @@ import type { ViewState } from './types';
 
 export const API_BASE = 'https://hestia.completeautomate.com';
 
+/** API key injected at build time. Set via VITE_HESTIA_API_KEY env var. */
+const API_KEY = import.meta.env.VITE_HESTIA_API_KEY as string | undefined;
+
+/** Build headers with Content-Type and optional API key for Hestia auth. */
+export function apiHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (API_KEY) headers['X-API-Key'] = API_KEY;
+  if (extra) Object.assign(headers, extra);
+  return headers;
+}
+
 export const LEAD_STATES = ['discovery', 'contacted', 'qualified', 'won', 'not_interested'];
 
 export function formatTime(iso: string): string {

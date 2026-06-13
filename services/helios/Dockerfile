@@ -1,5 +1,7 @@
 # Build stage
 FROM node:22-alpine AS builder
+ARG VITE_HESTIA_API_KEY
+ENV VITE_HESTIA_API_KEY=$VITE_HESTIA_API_KEY
 WORKDIR /app
 COPY services/helios/package.json ./
 RUN npm install

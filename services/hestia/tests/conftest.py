@@ -1,9 +1,24 @@
 """Conftest — fixtures for Hestia tests."""
 
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+
+
+@pytest.fixture(autouse=True)
+def _set_api_key():
+    """Set a test API key for all tests."""
+    os.environ["API_KEY"] = "test-api-key"
+    yield
+    del os.environ["API_KEY"]
+
+
+@pytest.fixture
+def headers():
+    """Default headers with valid API key."""
+    return {"X-API-Key": "test-api-key"}
 
 
 @pytest.fixture

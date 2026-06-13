@@ -63,3 +63,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/vimalmenon/micro-army/${{ matrix.service }}:latest
+          build-args: |
+            VITE_HESTIA_API_KEY=${{ secrets.HESTIA_API_KEY }}
