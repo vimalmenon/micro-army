@@ -1,6 +1,6 @@
 import type { ViewState } from './types';
 
-export const API_BASE = 'https://messages.completeautomate.com';
+export const API_BASE = 'https://hestia.completeautomate.com';
 
 export const LEAD_STATES = ['discovery', 'contacted', 'qualified', 'won', 'not_interested'];
 
