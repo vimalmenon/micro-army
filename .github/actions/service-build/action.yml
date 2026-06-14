@@ -98,7 +98,6 @@ runs:
           type=ref,event=tag,enable=${{ github.event_name != 'workflow_dispatch' }}
           type=match,pattern=v(.*),group=1,enable=${{ github.event_name != 'workflow_dispatch' }}
           type=sha,prefix=
-          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push
       uses: docker/build-push-action@v5

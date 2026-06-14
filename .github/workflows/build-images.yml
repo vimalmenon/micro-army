@@ -9,9 +9,18 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: 'Service to build (e.g. youtube-svc)'
+        description: 'Service to build (e.g. hestia)'
         required: true
         type: string
+      release_type:
+        description: 'Version bump for release tag'
+        required: false
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: read
@@ -43,23 +52,17 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.find-changed.outputs.services) }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up QEMU for multi-arch
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          fetch-depth: 0
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: ./.github/actions/service-build
         with:
-          context: .
-          file: services/${{ matrix.service }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/vimalmenon/micro-army/${{ matrix.service }}:latest
+          image_name: ${{ matrix.service }}
+          dockerfile: services/${{ matrix.service }}/Dockerfile
+          build_context: .
+          release_type: ${{ github.event.inputs.release_type || 'patch' }}
