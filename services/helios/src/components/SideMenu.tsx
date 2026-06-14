@@ -75,7 +75,7 @@ export default function SideMenu() {
             Helios
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            admin@completeautomate.com
+            hello@completeautomate.com
           </Typography>
         </Box>
         <OptionsMenu />
