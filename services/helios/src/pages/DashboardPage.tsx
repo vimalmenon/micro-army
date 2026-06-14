@@ -5,7 +5,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useHeliosData } from '../context/HeliosDataContext';
 import MainGrid from '../components/MainGrid';
 import { formatTime } from '../lib/helios';
-import type { Lead, Message } from '../lib/types';
+import type { Message } from '../lib/types';
 
 function RecentMessagesGrid({ messages }: { messages: Message[] }) {
   const navigate = useNavigate();
@@ -38,41 +38,9 @@ function RecentMessagesGrid({ messages }: { messages: Message[] }) {
   );
 }
 
-function RecentLeadsGrid({ leads }: { leads: Lead[] }) {
-  const navigate = useNavigate();
-  const columns: GridColDef[] = [
-    { field: 'company', headerName: 'Company', width: 180 },
-    { field: 'score', headerName: 'Score', width: 80 },
-    { field: 'urgency', headerName: 'Urgency', width: 100 },
-    { field: 'state', headerName: 'State', width: 120 },
-    { field: 'pain_point', headerName: 'Pain Point', width: 300 },
-  ];
-
-  const rows = leads.map((l) => ({
-    id: l.id,
-    company: l.company || l.title,
-    score: `${l.score}/10`,
-    urgency: l.urgency,
-    state: l.state,
-    pain_point: l.pain_point,
-  }));
-
-  return (
-    <Box sx={{ height: 350, width: '100%' }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        density="compact"
-        hideFooter
-        onRowClick={(params) => navigate(`/leads/${params.id}`)}
-        sx={{ cursor: 'pointer' }}
-      />
-    </Box>
-  );
-}
 
 export function DashboardPage() {
-  const { messages, leads } = useHeliosData();
+  const { messages } = useHeliosData();
 
   return (
     <>
@@ -83,10 +51,6 @@ export function DashboardPage() {
       </Typography>
       <RecentMessagesGrid messages={messages.slice(0, 5)} />
 
-      <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
-        Recent Leads
-      </Typography>
-      <RecentLeadsGrid leads={leads.slice(0, 6)} />
     </>
   );
 }
