@@ -1,0 +1,1 @@
+export const CHECK_SERVICE_INTERVAL = 10000; // 10 seconds
