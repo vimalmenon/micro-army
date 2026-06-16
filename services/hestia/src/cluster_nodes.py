@@ -25,7 +25,7 @@ def _build_headers() -> dict[str, str] | None:
 def _build_ssl_context() -> ssl.SSLContext:
     ctx = ssl.create_default_context()
     if os.path.isfile(CA_PATH):
-        ctx.load_verify_cafile(CA_PATH)
+        ctx.load_verify_locations(CA_PATH)  # Python 3.13 uses load_verify_locations
     else:
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
