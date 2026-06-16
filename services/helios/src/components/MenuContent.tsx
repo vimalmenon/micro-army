@@ -7,6 +7,7 @@ import Stack from '@mui/material/Stack';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import TrackChangesRoundedIcon from '@mui/icons-material/TrackChangesRounded';
+import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useHeliosData } from '../context/HeliosDataContext';
 
@@ -14,6 +15,7 @@ const mainListItems = [
   { text: 'Overview', icon: <HomeRoundedIcon />, to: '/' },
   { text: 'Inbox', icon: <MailOutlineRoundedIcon />, to: '/messages' },
   { text: 'Pipeline', icon: <TrackChangesRoundedIcon />, to: '/leads' },
+  { text: 'Services', icon: <MonitorHeartRoundedIcon />, to: '/services' },
 ];
 
 export default function MenuContent() {

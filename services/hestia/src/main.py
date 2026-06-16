@@ -25,6 +25,7 @@ from models import (
     MessageListResponse,
     MessageUpdateResponse,
 )
+from service_health import check_all_services, ServiceStatus
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
@@ -87,6 +88,16 @@ def _now() -> str:
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 async def health():
     return HealthResponse()
+
+
+# ─── Service Health (public, no auth required) ────
+
+
+@app.get("/api/v1/services/status", tags=["system"])
+async def services_status():
+    """Check health of all internal microservices concurrently."""
+    results = await check_all_services()
+    return {"services": [s.__dict__ for s in results]}
 
 
 # ─── Messages ────────────────────────────────────

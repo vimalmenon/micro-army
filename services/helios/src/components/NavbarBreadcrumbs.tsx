@@ -7,6 +7,7 @@ const pathLabels: Record<string, string> = {
   '': 'Dashboard',
   'messages': 'Inbox',
   'leads': 'Pipeline',
+  'services': 'Services',
 };
 
 export default function NavbarBreadcrumbs() {
