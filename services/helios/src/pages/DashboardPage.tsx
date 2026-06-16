@@ -28,6 +28,7 @@ import CloudQueueRoundedIcon from '@mui/icons-material/CloudQueueRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import ComputerIcon from '@mui/icons-material/Computer';
 import BarChartRoundedIcon from '@mui/icons-material/BarChartRounded';
+import TrackChangesRoundedIcon from '@mui/icons-material/TrackChangesRounded';
 
 interface AppLink {
   name: string;
@@ -79,6 +80,14 @@ const apps: AppLink[] = [
     icon: <MenuBookRoundedIcon fontSize="large" />,
     category: 'Core',
     tags: ['Docs'],
+  },
+  {
+    name: 'Linear',
+    url: 'https://linear.app',
+    description: 'Issue tracking & project management',
+    icon: <TrackChangesRoundedIcon fontSize="large" />,
+    category: 'Tools',
+    tags: ['Project Mgmt'],
   },
   {
     name: 'Ops (Semaphore)',
@@ -184,6 +193,7 @@ const categoryColors: Record<string, string> = {
   Core: 'primary.main',
   Infra: 'warning.main',
   Automation: 'success.main',
+  Tools: 'secondary.main',
   Other: 'text.secondary',
 };
 
