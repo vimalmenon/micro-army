@@ -6,6 +6,7 @@ import CardActionArea from '@mui/material/CardActionArea';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
+import LinearProgress from '@mui/material/LinearProgress';
 import MemoryRoundedIcon from '@mui/icons-material/MemoryRounded';
 import CircleIcon from '@mui/icons-material/Circle';
 import RouterIcon from '@mui/icons-material/Router';
@@ -179,9 +180,15 @@ const categoryColors: Record<string, string> = {
 interface NodeInfo {
   name: string;
   cpu: string;
+  cpu_total_m: number;
+  cpu_used_m: number;
+  cpu_percent: number;
   memory: string;
+  memory_used: string;
+  memory_total_bytes: number;
+  memory_used_bytes: number;
+  memory_percent: number;
   storage: string;
-  pods: string;
   ready: boolean;
 }
 
@@ -231,30 +238,48 @@ function NodeInfoBar() {
                     sx={{ height: 22, '& .MuiChip-icon': { ml: 0.5 } }}
                   />
                 </Box>
-                <Grid container spacing={1}>
+                <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
                   <Grid size={4}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.3 }}>
                         CPU
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {node.cpu}
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+                        {node.cpu_percent}%
                       </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.65rem' }}>
+                        {node.cpu_used_m}m / {node.cpu}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={Math.min(node.cpu_percent, 100)}
+                        sx={{ mt: 0.5, height: 4, borderRadius: 2 }}
+                        color={node.cpu_percent > 80 ? 'error' : node.cpu_percent > 60 ? 'warning' : 'primary'}
+                      />
                     </Box>
                   </Grid>
                   <Grid size={4}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.3 }}>
                         Memory
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {node.memory}
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+                        {node.memory_percent}%
                       </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.65rem' }}>
+                        {node.memory_used} / {node.memory}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={Math.min(node.memory_percent, 100)}
+                        sx={{ mt: 0.5, height: 4, borderRadius: 2 }}
+                        color={node.memory_percent > 80 ? 'error' : node.memory_percent > 60 ? 'warning' : 'primary'}
+                      />
                     </Box>
                   </Grid>
                   <Grid size={4}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.3 }}>
                         Storage
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
