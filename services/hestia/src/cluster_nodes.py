@@ -18,8 +18,13 @@ METRICS_API = "https://kubernetes.default.svc/apis/metrics.k8s.io/v1beta1/nodes"
 # ─── k8s quantity parsing helpers ────────────────────────
 
 def parse_cpu_millicores(raw: str) -> int:
-    """Parse k8s CPU quantity to millicores. '2' → 2000, '250m' → 250."""
+    """Parse k8s CPU quantity to millicores.
+    '2' → 2000, '250m' → 250, '271118863n' → 271, '500u' → 0."""
     raw = raw.strip()
+    if raw.endswith("n"):
+        return int(raw[:-1]) // 1_000_000
+    if raw.endswith("u"):
+        return int(raw[:-1]) // 1_000
     if raw.endswith("m"):
         return int(raw[:-1])
     return int(raw) * 1000
