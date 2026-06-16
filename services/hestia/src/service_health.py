@@ -39,7 +39,7 @@ _INTERNAL_SERVICES.append(
 
 # Angelos (port 8000)
 _INTERNAL_SERVICES.append(
-    ServiceTarget("angelos", "angelos.microservices.svc.cluster.local", 8000, "/")
+    ServiceTarget("angelos", "angelos.microservices.svc.cluster.local", 8000, "/health")
 )
 
 ALL_SERVICES: list[ServiceTarget] = _INTERNAL_SERVICES
