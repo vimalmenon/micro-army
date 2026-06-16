@@ -5,7 +5,6 @@ import CardActionArea from '@mui/material/CardActionArea';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded';
 import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
@@ -21,7 +20,6 @@ import SlideshowRoundedIcon from '@mui/icons-material/SlideshowRounded';
 import AdsClickRoundedIcon from '@mui/icons-material/AdsClickRounded';
 import RouterRoundedIcon from '@mui/icons-material/RouterRounded';
 import CloudQueueRoundedIcon from '@mui/icons-material/CloudQueueRounded';
-import StorageRoundedIcon from '@mui/icons-material/StorageRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 
 interface AppLink {
