@@ -8,6 +8,7 @@ import { LeadsPage } from './pages/LeadsPage';
 import { MessageDetailPage } from './pages/MessageDetailPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { ServicesPage } from './pages/ServicesPage';
+import ServicesOverviewPage from './pages/ServicesOverviewPage';
 
 // MUI imports
 import { alpha } from '@mui/material/styles';
@@ -24,6 +25,7 @@ function getPrimaryContent(pathname: string): React.ReactNode {
   if (pathname === '/messages') return <MessagesPage />;
   if (pathname === '/leads') return <LeadsPage />;
   if (pathname === '/services') return <ServicesPage />;
+  if (pathname === '/architecture') return <ServicesOverviewPage />;
   return <Navigate to="/" replace />;
 }
 
@@ -36,7 +38,8 @@ export default function App() {
   const isMessagesRoute = location.pathname === '/messages' || Boolean(messageDetailMatch);
   const isLeadsRoute = location.pathname === '/leads' || Boolean(leadDetailMatch);
   const isServicesRoute = location.pathname === '/services';
-  const isKnownRoute = location.pathname === '/' || isMessagesRoute || isLeadsRoute || isServicesRoute;
+  const isArchitectureRoute = location.pathname === '/architecture';
+  const isKnownRoute = location.pathname === '/' || isMessagesRoute || isLeadsRoute || isServicesRoute || isArchitectureRoute;
 
   useEffect(() => {
     const leadId = leadDetailMatch?.params.leadId;
