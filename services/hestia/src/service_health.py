@@ -28,7 +28,7 @@ class ServiceTarget:
 
 # Internal microservices in k8s microservices namespace (port 8000)
 _INTERNAL_SERVICES: list[ServiceTarget] = [
-    ServiceTarget(name, f"{name}.microservices.svc.cluster.local", 8000, "/")
+    ServiceTarget(name, f"{name}.microservices.svc.cluster.local", 8000, "/health")
     for name in ["atlas", "athena", "clio", "iris", "orpheus", "pythia", "hestia"]
 ]
 
