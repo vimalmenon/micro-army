@@ -27,6 +27,7 @@ import RouterRoundedIcon from '@mui/icons-material/RouterRounded';
 import CloudQueueRoundedIcon from '@mui/icons-material/CloudQueueRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import ComputerIcon from '@mui/icons-material/Computer';
+import BarChartRoundedIcon from '@mui/icons-material/BarChartRounded';
 
 interface AppLink {
   name: string;
@@ -92,6 +93,14 @@ const apps: AppLink[] = [
     url: 'https://status.completeautomate.com',
     description: 'Uptime Kuma — real-time service health monitoring',
     icon: <MonitorHeartRoundedIcon fontSize="large" />,
+    category: 'Infra',
+    tags: ['Monitoring'],
+  },
+  {
+    name: 'Grafana',
+    url: 'https://grafana.completeautomate.com',
+    description: 'Dashboards & metrics — cluster observability & alerts',
+    icon: <BarChartRoundedIcon fontSize="large" />,
     category: 'Infra',
     tags: ['Monitoring'],
   },
