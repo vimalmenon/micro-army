@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -5,6 +6,9 @@ import CardActionArea from '@mui/material/CardActionArea';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
+import MemoryRoundedIcon from '@mui/icons-material/MemoryRounded';
+import CircleIcon from '@mui/icons-material/Circle';
+import RouterIcon from '@mui/icons-material/Router';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded';
 import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
@@ -172,11 +176,110 @@ const categoryColors: Record<string, string> = {
   Other: 'text.secondary',
 };
 
+interface NodeInfo {
+  name: string;
+  cpu: string;
+  memory: string;
+  storage: string;
+  pods: string;
+  ready: boolean;
+}
+
+const NODE_API = '/api/v1/cluster/nodes';
+
+function NodeInfoBar() {
+  const [nodes, setNodes] = useState<NodeInfo[]>([]);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch(NODE_API)
+      .then((r) => r.json())
+      .then((d) => {
+        setNodes(d.nodes || []);
+        setError(false);
+      })
+      .catch(() => setError(true));
+  }, []);
+
+  if (error) return null;
+
+  return (
+    <Box sx={{ mb: 4 }}>
+      <Typography
+        variant="subtitle1"
+        sx={{ mb: 2, fontWeight: 600, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}
+      >
+        <MemoryRoundedIcon fontSize="small" />
+        Cluster Nodes
+      </Typography>
+      <Grid container spacing={2}>
+        {nodes.map((node) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={node.name}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <RouterIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, flexGrow: 1 }}>
+                    {node.name}
+                  </Typography>
+                  <Chip
+                    icon={<CircleIcon sx={{ fontSize: 8, color: node.ready ? 'success.main' : 'error.main' }} />}
+                    label={node.ready ? 'Ready' : 'Not Ready'}
+                    size="small"
+                    color={node.ready ? 'success' : 'error'}
+                    variant="outlined"
+                    sx={{ height: 22, '& .MuiChip-icon': { ml: 0.5 } }}
+                  />
+                </Box>
+                <Grid container spacing={1}>
+                  <Grid size={4}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        CPU
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {node.cpu}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid size={4}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        Memory
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {node.memory}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid size={4}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        Storage
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {node.storage}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+}
+
+
 export function DashboardPage() {
   const categories = [...new Set(apps.map((a) => a.category))];
 
   return (
     <Box sx={{ p: 1 }}>
+      <NodeInfoBar />
+
       <Typography variant="h4" sx={{ mb: 1, fontWeight: 700 }}>
         Bookmarks
       </Typography>

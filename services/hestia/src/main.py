@@ -26,6 +26,7 @@ from models import (
     MessageUpdateResponse,
 )
 from service_health import check_all_services, ServiceStatus
+from cluster_nodes import get_cluster_nodes
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
@@ -98,6 +99,16 @@ async def services_status():
     """Check health of all internal microservices concurrently."""
     results = await check_all_services()
     return {"services": [s.__dict__ for s in results]}
+
+
+# ─── Cluster Nodes (public, no auth required) ──────
+
+
+@app.get("/api/v1/cluster/nodes", tags=["system"])
+async def cluster_nodes():
+    """List cluster nodes with CPU, memory, storage, and status."""
+    nodes = await get_cluster_nodes()
+    return {"nodes": nodes}
 
 
 # ─── Messages ────────────────────────────────────
