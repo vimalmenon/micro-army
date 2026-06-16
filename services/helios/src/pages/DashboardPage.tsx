@@ -90,6 +90,14 @@ const apps: AppLink[] = [
     tags: ['Project Mgmt'],
   },
   {
+    name: 'Complete Automate',
+    url: 'https://completeautomate.com',
+    description: 'Company website — marketing, services & info',
+    icon: <WebRoundedIcon fontSize="large" />,
+    category: 'Core',
+    tags: ['Website'],
+  },
+  {
     name: 'Ops (Semaphore)',
     url: 'https://ops.completeautomate.com',
     description: 'Ansible automation — run playbooks & manage infra',
