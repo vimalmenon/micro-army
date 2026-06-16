@@ -26,6 +26,7 @@ import AdsClickRoundedIcon from '@mui/icons-material/AdsClickRounded';
 import RouterRoundedIcon from '@mui/icons-material/RouterRounded';
 import CloudQueueRoundedIcon from '@mui/icons-material/CloudQueueRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
+import ComputerIcon from '@mui/icons-material/Computer';
 
 interface AppLink {
   name: string;
@@ -189,6 +190,7 @@ interface NodeInfo {
   memory_used_bytes: number;
   memory_percent: number;
   storage: string;
+  source?: string;
   ready: boolean;
 }
 
@@ -225,7 +227,11 @@ function NodeInfoBar() {
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                  <RouterIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                  {node.source === 'hermes' ? (
+                    <ComputerIcon sx={{ color: 'secondary.main', fontSize: 20 }} />
+                  ) : (
+                    <RouterIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                  )}
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, flexGrow: 1 }}>
                     {node.name}
                   </Typography>

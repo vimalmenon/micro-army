@@ -13,6 +13,7 @@ TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 CA_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 NODE_API = "https://kubernetes.default.svc/api/v1/nodes"
 METRICS_API = "https://kubernetes.default.svc/apis/metrics.k8s.io/v1beta1/nodes"
+HERMES_STATS_URL = "http://192.168.128.52:8080/stats"
 
 
 # ─── k8s quantity parsing helpers ────────────────────────
@@ -101,6 +102,22 @@ def _fetch_json(url: str, headers: dict) -> dict | None:
         return None
 
 
+# ─── Hermes host stats ───────────────────────────
+
+
+def _fetch_hermes_stats() -> dict | None:
+    """Fetch stats from the local Hermes stats server."""
+    import json as _json
+    import urllib.request as _req
+
+    try:
+        resp = _req.urlopen(HERMES_STATS_URL, timeout=5)
+        return _json.loads(resp.read())
+    except Exception:
+        logger.debug("Hermes stats server unreachable — skipping")
+        return None
+
+
 # ─── Main ────────────────────────────────────────────────
 
 
@@ -182,6 +199,11 @@ async def get_cluster_nodes() -> list[dict]:
             "storage": format_bytes(parse_memory_bytes(storage_raw)),
         })
 
+    # Also fetch the local Hermes host stats
+    hermes_node = await loop.run_in_executor(None, _fetch_hermes_stats)
+    if hermes_node:
+        nodes.append(hermes_node)
+
     return nodes
 
 
@@ -232,5 +254,19 @@ def _fallback() -> list[dict]:
             "memory_used": "5.0 GiB",
             "memory_percent": 31,
             "storage": "117 GiB",
+        },
+        {
+            "name": "hermes",
+            "ready": True,
+            "cpu": "4 cores",
+            "cpu_total_m": 4000,
+            "cpu_used_m": 258,
+            "cpu_percent": 6,
+            "memory": "16 GiB",
+            "memory_total_bytes": 17006182400,
+            "memory_used_bytes": 5725503488,
+            "memory_used": "5.3 GiB",
+            "memory_percent": 34,
+            "storage": "58 GiB",
         },
     ]
