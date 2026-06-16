@@ -4,7 +4,7 @@ import Link from '@mui/material/Link';
 import { useLocation } from 'react-router-dom';
 
 const pathLabels: Record<string, string> = {
-  '': 'Dashboard',
+  '': 'Bookmarks',
   'messages': 'Inbox',
   'leads': 'Pipeline',
   'services': 'Services',
