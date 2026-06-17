@@ -41,7 +41,8 @@ export default function App() {
   const isLeadsRoute = location.pathname === '/leads' || Boolean(leadDetailMatch);
   const isServicesRoute = location.pathname === '/services';
   const isArchitectureRoute = location.pathname === '/architecture';
-  const isKnownRoute = location.pathname === '/' || isMessagesRoute || isLeadsRoute || isServicesRoute || isArchitectureRoute;
+  const isPortfolioRoute = location.pathname === '/portfolio';
+  const isKnownRoute = location.pathname === '/' || isMessagesRoute || isLeadsRoute || isServicesRoute || isArchitectureRoute || isPortfolioRoute;
 
   useEffect(() => {
     const leadId = leadDetailMatch?.params.leadId;
