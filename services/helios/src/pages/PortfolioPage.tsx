@@ -5,8 +5,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import CircularProgress from '@mui/material/CircularProgress';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -158,7 +157,7 @@ export function PortfolioPage() {
           </Typography>
           <Button
             size="small"
-            startIcon={<RefreshIcon />}
+            startIcon={<RefreshRoundedIcon />}
             onClick={refresh}
             disabled={loading}
           >
@@ -172,9 +171,6 @@ export function PortfolioPage() {
           loading={loading}
           autoHeight
           disableRowSelectionOnClick
-          slots={{
-            loadingOverlay: CircularProgress,
-          }}
           sx={{ border: 'none' }}
         />
       </Card>

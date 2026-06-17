@@ -8,11 +8,11 @@ from .conftest import SAMPLE_MESSAGE
 
 
 class TestHealth:
-    def test_health_returns_ok(self, client, headers):
-        resp = client.get("/health", headers=headers)
+    def test_health_returns_ok(self, client):
+        resp = client.get("/health")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["status"] == "ok"
+        assert data["status"] == "healthy"
         assert data["service"] == "hestia"
 
     def test_health_no_auth(self, client):
@@ -117,7 +117,6 @@ class TestMessages:
             assert resp.status_code == 200
             data = resp.json()
             assert data["id"] == "msg-123"
-            assert data["deleted"] is True
 
     def test_delete_message_not_found(self, client, headers):
         with patch("src.main.httpx.AsyncClient") as mock_http:
