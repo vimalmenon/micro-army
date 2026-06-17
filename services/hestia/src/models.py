@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class HealthResponse(BaseModel):
+    service: str = "hestia"
     status: str = "healthy"
 
 
