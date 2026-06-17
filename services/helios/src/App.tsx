@@ -7,6 +7,7 @@ import { LeadDetailPage } from './pages/LeadDetailPage';
 import { LeadsPage } from './pages/LeadsPage';
 import { MessageDetailPage } from './pages/MessageDetailPage';
 import { MessagesPage } from './pages/MessagesPage';
+import { PortfolioPage } from './pages/PortfolioPage';
 import { ServicesPage } from './pages/ServicesPage';
 import ServicesOverviewPage from './pages/ServicesOverviewPage';
 
@@ -25,6 +26,7 @@ function getPrimaryContent(pathname: string): React.ReactNode {
   if (pathname === '/messages') return <MessagesPage />;
   if (pathname === '/leads') return <LeadsPage />;
   if (pathname === '/services') return <ServicesPage />;
+  if (pathname === '/portfolio') return <PortfolioPage />;
   if (pathname === '/architecture') return <ServicesOverviewPage />;
   return <Navigate to="/" replace />;
 }

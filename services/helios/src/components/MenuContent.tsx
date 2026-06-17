@@ -9,6 +9,7 @@ import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import TrackChangesRoundedIcon from '@mui/icons-material/TrackChangesRounded';
 import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded';
 import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
+import ShowChartRoundedIcon from '@mui/icons-material/ShowChartRounded';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useHeliosData } from '../context/HeliosDataContext';
 
@@ -17,6 +18,7 @@ const mainListItems = [
   { text: 'Inbox', icon: <MailOutlineRoundedIcon />, to: '/messages' },
   { text: 'Pipeline', icon: <TrackChangesRoundedIcon />, to: '/leads' },
   { text: 'Services', icon: <MonitorHeartRoundedIcon />, to: '/services' },
+  { text: 'Portfolio', icon: <ShowChartRoundedIcon />, to: '/portfolio' },
   { text: 'Architecture', icon: <AccountTreeRoundedIcon />, to: '/architecture' },
 ];
 

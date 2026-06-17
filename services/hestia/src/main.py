@@ -24,9 +24,11 @@ from models import (
     MessageDetail,
     MessageListResponse,
     MessageUpdateResponse,
+    PortfolioResponse,
 )
 from service_health import check_all_services, ServiceStatus
 from cluster_nodes import get_cluster_nodes
+from portfolio import get_portfolio
 from shared.log_config import setup_logging
 from shared.metrics import MetricsMiddleware, metrics_handler
 
@@ -102,13 +104,21 @@ async def services_status():
 
 
 # ─── Cluster Nodes (public, no auth required) ──────
-
+# ─── Cluster Nodes (public, no auth required) ──────
 
 @app.get("/api/v1/cluster/nodes", tags=["system"])
 async def cluster_nodes():
     """List cluster nodes with CPU, memory, storage, and status."""
     nodes = await get_cluster_nodes()
     return {"nodes": nodes}
+
+
+# ─── Portfolio (public, no auth required) ────────
+
+@app.get("/portfolio", response_model=PortfolioResponse, tags=["portfolio"])
+async def portfolio():
+    """Live stock portfolio with current prices from yfinance."""
+    return await get_portfolio()
 
 
 # ─── Messages ────────────────────────────────────
