@@ -5,6 +5,7 @@ resources:
 - deployment.yaml
 - service.yaml
 - ingress.yaml
+- cloudflare-token.yaml
 images:
 - name: ghcr.io/vimalmenon/azure.completeautomate
   newTag: latest
