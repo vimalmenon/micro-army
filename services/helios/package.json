@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc",
+    "prebuild": "node -e \"const p=require('./package.json'); require('fs').writeFileSync('public/version.json',JSON.stringify({version:p.version,project:'helios',updatedAt:new Date().toISOString().split('T')[0]},null,2)+'\\n')\"",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
