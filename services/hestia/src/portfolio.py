@@ -13,7 +13,7 @@ from models import PortfolioHolding, PortfolioResponse
 
 # Holdings — ticker → shares mapping. Add more here to expand.
 HOLDINGS: dict[str, float] = {
-    "GLE.PA": 710,  # Société Générale
+    "GLE.PA": 900,  # Société Générale
 }
 
 
