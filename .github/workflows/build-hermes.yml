@@ -1,0 +1,87 @@
+name: Build and Push hermes
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Version bump for release tag"
+        required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+    paths:
+      - "shared/**"
+      - "services/hermes/**"
+      - ".github/workflows/**"
+
+jobs:
+  shared-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shared
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install boto3==1.35.0 pytest==8.3.4
+
+      - name: Run shared tests
+        run: |
+          PYTHONPATH=. python -m pytest tests/ -v --tb=short
+
+  test:
+    needs: [shared-test]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/hermes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          PYTHONPATH=src:../.. python -m pytest tests/ -v --tb=short
+
+  build:
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build and push
+        uses: ./.github/actions/service-build
+        with:
+          image_name: hermes
+          dockerfile: services/hermes/Dockerfile
+          build_context: .
+          release_type: ${{ github.event.inputs.release_type || 'patch' }}
