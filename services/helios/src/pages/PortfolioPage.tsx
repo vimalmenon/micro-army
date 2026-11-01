@@ -36,7 +36,7 @@ const columns: GridColDef[] = [
       <Typography fontWeight={600}>{params.value}</Typography>
     ),
   },
-  { field: 'name', headerName: 'Company', flex: 1, minWidth: 180 },
+  { field: 'name', headerName: 'Company', width: 220 },
   {
     field: 'shares',
     headerName: 'Shares',
