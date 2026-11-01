@@ -22,6 +22,11 @@ function formatPct(value: number): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+// Numeric columns: right-align the cells *and* the headers so digits line up
+// under each other. Without headerAlign the header stays left while the data
+// is pulled right by type:'number', which is what looked misaligned.
+const numCol = { align: 'right', headerAlign: 'right' } as const;
+
 const columns: GridColDef[] = [
   {
     field: 'ticker',
@@ -31,24 +36,27 @@ const columns: GridColDef[] = [
       <Typography fontWeight={600}>{params.value}</Typography>
     ),
   },
-  { field: 'name', headerName: 'Company', width: 220 },
+  { field: 'name', headerName: 'Company', flex: 1, minWidth: 180 },
   {
     field: 'shares',
     headerName: 'Shares',
     width: 100,
     type: 'number',
+    ...numCol,
   },
   {
     field: 'price',
     headerName: 'Price',
     width: 120,
     type: 'number',
+    ...numCol,
     valueFormatter: (value: number) => formatCurrency(value),
   },
   {
     field: 'change_pct',
     headerName: 'Change %',
-    width: 120,
+    width: 110,
+    ...numCol,
     renderCell: (params) => {
       const val = params.value as number;
       return (
@@ -62,6 +70,7 @@ const columns: GridColDef[] = [
     field: 'change_dollar',
     headerName: 'Change €',
     width: 120,
+    ...numCol,
     renderCell: (params) => {
       const val = params.value as number;
       return (
@@ -76,12 +85,14 @@ const columns: GridColDef[] = [
     headerName: 'Total Value',
     width: 140,
     type: 'number',
+    ...numCol,
     valueFormatter: (value: number) => formatCurrency(value),
   },
   {
     field: 'total_pnl',
     headerName: 'P&L',
     width: 120,
+    ...numCol,
     renderCell: (params) => {
       const val = params.value as number;
       return (
@@ -171,7 +182,14 @@ export function PortfolioPage() {
           loading={loading}
           autoHeight
           disableRowSelectionOnClick
-          sx={{ border: 'none' }}
+          sx={{
+            border: 'none',
+            // Tabular figures: equal-width digits, so decimal points stack in a
+            // straight column instead of drifting with proportional numerals.
+            '& .MuiDataGrid-cell, & .MuiDataGrid-columnHeaderTitle': {
+              fontVariantNumeric: 'tabular-nums',
+            },
+          }}
         />
       </Card>
     </Box>
