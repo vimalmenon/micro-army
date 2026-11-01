@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography';
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'EUR',
     minimumFractionDigits: 2,
   }).format(value);
 }
@@ -60,7 +60,7 @@ const columns: GridColDef[] = [
   },
   {
     field: 'change_dollar',
-    headerName: 'Change $',
+    headerName: 'Change €',
     width: 120,
     renderCell: (params) => {
       const val = params.value as number;
