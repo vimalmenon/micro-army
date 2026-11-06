@@ -19,6 +19,13 @@ HOLDINGS: dict[str, float] = {
     "GLE.PA": 900,  # Société Générale
 }
 
+# Optional purchase price per share, ticker → price paid per share. Populate an
+# entry to light up the Cost / Invested / Return columns for that holding; leave
+# it out and those columns stay blank rather than showing a fabricated basis.
+COSTS: dict[str, float] = {
+    # "GLE.PA": 0.00,  # ← put the price you actually paid here
+}
+
 # ── Gold ──────────────────────────────────────────────────────────────────
 # 600 g of bullion, valued in EUR so the whole table shares one currency.
 #
@@ -74,6 +81,16 @@ def _get_holdings() -> PortfolioResponse:
         total = round(shares * price, 2)
         pnl = round(shares * change_dollar, 2)
 
+        # Cost basis is optional per ticker — see COSTS above.
+        unit_cost = COSTS.get(ticker)
+        invested: float | None = None
+        gain: float | None = None
+        gain_pct: float | None = None
+        if unit_cost:
+            invested = round(unit_cost * shares, 2)
+            gain = round(total - invested, 2)
+            gain_pct = round(gain / invested * 100, 2) if invested else None
+
         total_value += total
         total_pnl += pnl
 
@@ -89,6 +106,10 @@ def _get_holdings() -> PortfolioResponse:
             change_dollar=round(change_dollar, 2),
             total_value=total,
             total_pnl=pnl,
+            cost_basis=unit_cost,
+            cost_value=invested,
+            total_return=gain,
+            total_return_pct=gain_pct,
         ))
 
     # ── Gold ──────────────────────────────────────────────────────────────
@@ -129,6 +150,7 @@ def _get_holdings() -> PortfolioResponse:
                 total_pnl=gold_day_pnl,
                 unit="g",
                 cost_basis=GOLD_COST_EUR_PER_GRAM,
+                cost_value=gold_cost,
                 total_return=gold_return,
                 total_return_pct=round(gold_return / gold_cost * 100, 2) if gold_cost else None,
             ))

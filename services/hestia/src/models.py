@@ -54,6 +54,9 @@ class PortfolioHolding(BaseModel):
     # actually known; the UI leaves the cost/return columns blank otherwise
     # rather than inventing a basis for holdings we have no purchase price for.
     cost_basis: float | None = None
+    # Total amount originally invested (cost_basis × quantity), i.e. what the
+    # position cost, not what it is worth today.
+    cost_value: float | None = None
     total_return: float | None = None
     total_return_pct: float | None = None
 

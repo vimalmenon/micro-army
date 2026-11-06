@@ -68,6 +68,16 @@ const columns: GridColDef[] = [
       value === null || value === undefined ? '—' : formatCurrency(value),
   },
   {
+    // What the position actually cost — cost basis × quantity, as opposed to
+    // what it is worth now.
+    field: 'cost_value',
+    headerName: 'Invested',
+    width: 125,
+    ...numCol,
+    valueFormatter: (value: number | null) =>
+      value === null || value === undefined ? '—' : formatCurrency(value),
+  },
+  {
     field: 'change_pct',
     headerName: 'Change %',
     width: 110,

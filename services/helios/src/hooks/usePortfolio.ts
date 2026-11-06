@@ -17,6 +17,8 @@ export interface PortfolioHolding {
   // Purchase price per unit and the resulting gain. Null for holdings whose
   // cost basis is unknown, which is most of them.
   cost_basis?: number | null;
+  // Total originally invested (cost_basis × quantity).
+  cost_value?: number | null;
   total_return?: number | null;
   total_return_pct?: number | null;
 }
