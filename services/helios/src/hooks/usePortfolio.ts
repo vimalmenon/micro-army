@@ -10,6 +10,15 @@ export interface PortfolioHolding {
   change_dollar: number;
   total_value: number;
   total_pnl: number;
+
+  // Quantity label — "shares" for equities, "g" for the gold bullion position.
+  unit?: string;
+
+  // Purchase price per unit and the resulting gain. Null for holdings whose
+  // cost basis is unknown, which is most of them.
+  cost_basis?: number | null;
+  total_return?: number | null;
+  total_return_pct?: number | null;
 }
 
 export interface PortfolioData {

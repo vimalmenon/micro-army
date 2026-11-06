@@ -39,10 +39,15 @@ const columns: GridColDef[] = [
   { field: 'name', headerName: 'Company', width: 220 },
   {
     field: 'shares',
-    headerName: 'Shares',
+    headerName: 'Qty',
     width: 100,
-    type: 'number',
     ...numCol,
+    renderCell: (params) => (
+      <Typography component="span" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+        {params.row.shares.toLocaleString()}
+        {params.row.unit && params.row.unit !== 'shares' ? ` ${params.row.unit}` : ''}
+      </Typography>
+    ),
   },
   {
     field: 'price',
@@ -51,6 +56,16 @@ const columns: GridColDef[] = [
     type: 'number',
     ...numCol,
     valueFormatter: (value: number) => formatCurrency(value),
+  },
+  {
+    // Only holdings with a known purchase price show a cost; the rest render an
+    // em dash rather than a fabricated basis.
+    field: 'cost_basis',
+    headerName: 'Cost',
+    width: 105,
+    ...numCol,
+    valueFormatter: (value: number | null) =>
+      value === null || value === undefined ? '—' : formatCurrency(value),
   },
   {
     field: 'change_pct',
@@ -98,6 +113,33 @@ const columns: GridColDef[] = [
       return (
         <Typography color={val >= 0 ? 'success.main' : 'error.main'} fontWeight={600}>
           {formatCurrency(val)}
+        </Typography>
+      );
+    },
+  },
+  {
+    // Gain since purchase. Rendered as "+23.96% (+€11,289.82)"; blank where no
+    // cost basis exists.
+    field: 'total_return_pct',
+    headerName: 'Return',
+    width: 175,
+    ...numCol,
+    renderCell: (params) => {
+      const pct = params.row.total_return_pct;
+      if (pct === null || pct === undefined) {
+        return <Typography color="text.disabled">—</Typography>;
+      }
+      const abs = params.row.total_return ?? 0;
+      return (
+        <Typography
+          color={pct >= 0 ? 'success.main' : 'error.main'}
+          fontWeight={600}
+          sx={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {formatPct(pct)}{' '}
+          <Box component="span" sx={{ fontWeight: 400, opacity: 0.75 }}>
+            ({formatCurrency(abs)})
+          </Box>
         </Typography>
       );
     },

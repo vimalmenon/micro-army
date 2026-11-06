@@ -5,16 +5,31 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 from functools import lru_cache
+import logging
 import time
 
 import yfinance as yf
 
 from models import PortfolioHolding, PortfolioResponse
 
+log = logging.getLogger(__name__)
+
 # Holdings — ticker → shares mapping. Add more here to expand.
 HOLDINGS: dict[str, float] = {
     "GLE.PA": 900,  # Société Générale
 }
+
+# ── Gold ──────────────────────────────────────────────────────────────────
+# 500 g of bullion, valued in EUR so the whole table shares one currency.
+#
+# Cost basis = COMEX front-month close on 2025-04-30 (USD 3,319.10/oz) converted
+# at that day's EURUSD fix of 1.1325. That is the "April 2025" price; change the
+# date here if a different entry day was meant. Cross-checked against GLD, the
+# physically-backed ETF, which shows the same +23.7/-17% move for the period.
+GOLD_GRAMS = 500.0
+GOLD_CONTRACT = "GC=F"  # COMEX front month, quoted USD per troy ounce
+GRAMS_PER_OZ = 31.1034768
+GOLD_COST_EUR_PER_GRAM = round(3319.10 / 1.1325 / GRAMS_PER_OZ, 4)  # ≈ 94.2274
 
 
 # Simple in-memory cache (5 min TTL)
@@ -75,6 +90,50 @@ def _get_holdings() -> PortfolioResponse:
             total_value=total,
             total_pnl=pnl,
         ))
+
+    # ── Gold ──────────────────────────────────────────────────────────────
+    # Fetched separately from the equity loop: it is a futures contract quoted in
+    # USD and needs an FX conversion to land in the portfolio's EUR. A failure
+    # here degrades the page by one row rather than breaking the whole endpoint.
+    try:
+        ginfo = yf.Ticker(GOLD_CONTRACT).info or {}
+        gold_usd_oz = ginfo.get("currentPrice") or ginfo.get("regularMarketPrice") or 0.0
+        gold_usd_oz_prev = (
+            ginfo.get("previousClose") or ginfo.get("regularMarketPreviousClose") or gold_usd_oz
+        )
+        # FX pairs and futures often populate regularMarketPrice but leave
+        # currentPrice null, so both fields must be tried on each quote.
+        fx = yf.Ticker("EURUSD=X").info or {}
+        eur_usd = fx.get("currentPrice") or fx.get("regularMarketPrice") or 0.0
+
+        if gold_usd_oz and eur_usd:
+            price_g = gold_usd_oz / eur_usd / GRAMS_PER_OZ
+            prev_g = gold_usd_oz_prev / eur_usd / GRAMS_PER_OZ
+
+            gold_value = round(GOLD_GRAMS * price_g, 2)
+            gold_cost = round(GOLD_GRAMS * GOLD_COST_EUR_PER_GRAM, 2)
+            gold_return = round(gold_value - gold_cost, 2)
+            gold_day_pnl = round(GOLD_GRAMS * (price_g - prev_g), 2)
+
+            total_value += gold_value
+            total_pnl += gold_day_pnl
+
+            holdings.append(PortfolioHolding(
+                ticker="XAU",
+                name="Gold bullion",
+                shares=GOLD_GRAMS,
+                price=round(price_g, 2),
+                change_pct=round((price_g / prev_g - 1) * 100, 2) if prev_g else 0.0,
+                change_dollar=round(price_g - prev_g, 2),
+                total_value=gold_value,
+                total_pnl=gold_day_pnl,
+                unit="g",
+                cost_basis=GOLD_COST_EUR_PER_GRAM,
+                total_return=gold_return,
+                total_return_pct=round(gold_return / gold_cost * 100, 2) if gold_cost else None,
+            ))
+    except Exception:  # noqa: BLE001 — a missing gold quote must not 500 the page
+        log.warning("gold position unavailable", exc_info=True)
 
     result = PortfolioResponse(
         holdings=holdings,

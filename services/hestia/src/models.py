@@ -36,6 +36,7 @@ class MessageDeleteResponse(BaseModel):
 
 class PortfolioHolding(BaseModel):
     """A single holding in the stock portfolio."""
+
     ticker: str
     name: str
     shares: float
@@ -44,6 +45,17 @@ class PortfolioHolding(BaseModel):
     change_dollar: float
     total_value: float
     total_pnl: float
+
+    # Gold and other non-equity positions carry quantities that are not "shares"
+    # (500 grams of bullion), so the UI needs a label for the quantity cell.
+    unit: str = "shares"
+
+    # Optional purchase price per unit. Present only where the cost basis is
+    # actually known; the UI leaves the cost/return columns blank otherwise
+    # rather than inventing a basis for holdings we have no purchase price for.
+    cost_basis: float | None = None
+    total_return: float | None = None
+    total_return_pct: float | None = None
 
 
 class PortfolioResponse(BaseModel):
