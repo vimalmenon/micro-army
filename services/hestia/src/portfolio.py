@@ -20,13 +20,13 @@ HOLDINGS: dict[str, float] = {
 }
 
 # ── Gold ──────────────────────────────────────────────────────────────────
-# 500 g of bullion, valued in EUR so the whole table shares one currency.
+# 600 g of bullion, valued in EUR so the whole table shares one currency.
 #
 # Cost basis = COMEX front-month close on 2025-04-30 (USD 3,319.10/oz) converted
 # at that day's EURUSD fix of 1.1325. That is the "April 2025" price; change the
 # date here if a different entry day was meant. Cross-checked against GLD, the
 # physically-backed ETF, which shows the same +23.7/-17% move for the period.
-GOLD_GRAMS = 500.0
+GOLD_GRAMS = 600.0
 GOLD_CONTRACT = "GC=F"  # COMEX front month, quoted USD per troy ounce
 GRAMS_PER_OZ = 31.1034768
 GOLD_COST_EUR_PER_GRAM = round(3319.10 / 1.1325 / GRAMS_PER_OZ, 4)  # ≈ 94.2274
