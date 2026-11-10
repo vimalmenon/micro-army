@@ -30,13 +30,18 @@ COSTS: dict[str, float] = {
 # 600 g of bullion, valued in EUR so the whole table shares one currency.
 #
 # Cost basis = COMEX front-month close on 2025-04-30 (USD 3,319.10/oz) converted
-# at that day's EURUSD fix of 1.1325. That is the "April 2025" price; change the
-# date here if a different entry day was meant. Cross-checked against GLD, the
-# physically-backed ETF, which shows the same +23.7/-17% move for the period.
+# at THAT SAME DAY's EURUSD close of 1.1389. Both legs must come from the same
+# date: an earlier version of this line used the 30 Apr gold price with the 1 May
+# FX rate (1.1325), which overstated the basis by EUR 0.53/g — EUR 318 on 600 g.
+#
+# This is the end-of-April-2025 market price, not a receipt. It is the best
+# available anchor for a purchase made "end of April 2025"; if the actual price
+# paid is ever known, replace the constant with it.
 GOLD_GRAMS = 600.0
 GOLD_CONTRACT = "GC=F"  # COMEX front month, quoted USD per troy ounce
 GRAMS_PER_OZ = 31.1034768
-GOLD_COST_EUR_PER_GRAM = round(3319.10 / 1.1325 / GRAMS_PER_OZ, 4)  # ≈ 94.2274
+GOLD_COST_EUR_PER_GRAM = round(3319.10 / 1.1389 / GRAMS_PER_OZ, 4)  # ≈ 93.6970
+#   600 g × 93.6970 = EUR 56,218.20 invested
 
 
 # Simple in-memory cache (5 min TTL)
