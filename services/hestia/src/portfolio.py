@@ -44,6 +44,21 @@ GOLD_COST_EUR_PER_GRAM = round(3319.10 / 1.1389 / GRAMS_PER_OZ, 4)  # ≈ 93.697
 #   600 g × 93.6970 = EUR 56,218.20 invested
 
 
+# ── Precious metals ───────────────────────────────────────────────────────
+# Both are COMEX futures quoted in USD per troy ounce, so each needs an FX
+# conversion to land in the portfolio's EUR. Fetched outside the equity loop so
+# a failed metal quote degrades one row instead of 500-ing the whole endpoint.
+SILVER_GRAMS = 1000.0  # 1 kg
+
+# (ticker, display name, contract, grams held, cost per gram or None)
+# A None cost means the purchase price is unknown — the page shows an em dash
+# for Cost, Invested and Return rather than inventing a basis.
+METALS: list[tuple[str, str, str, float, float | None]] = [
+    ("XAU", "Gold bullion", GOLD_CONTRACT, GOLD_GRAMS, GOLD_COST_EUR_PER_GRAM),
+    ("XAG", "Silver bullion", "SI=F", SILVER_GRAMS, None),
+]
+
+
 # Simple in-memory cache (5 min TTL)
 _cache: dict[str, tuple[float, PortfolioResponse]] = {}
 _CACHE_TTL = 300  # seconds
@@ -102,65 +117,84 @@ def _get_holdings() -> PortfolioResponse:
         if market_open is None:
             market_open = info.get("marketState") == "REGULAR"
 
-        holdings.append(PortfolioHolding(
-            ticker=ticker,
-            name=name,
-            shares=shares,
-            price=round(price, 2),
-            change_pct=round(change_pct, 2),
-            change_dollar=round(change_dollar, 2),
-            total_value=total,
-            total_pnl=pnl,
-            cost_basis=unit_cost,
-            cost_value=invested,
-            total_return=gain,
-            total_return_pct=gain_pct,
-        ))
-
-    # ── Gold ──────────────────────────────────────────────────────────────
-    # Fetched separately from the equity loop: it is a futures contract quoted in
-    # USD and needs an FX conversion to land in the portfolio's EUR. A failure
-    # here degrades the page by one row rather than breaking the whole endpoint.
-    try:
-        ginfo = yf.Ticker(GOLD_CONTRACT).info or {}
-        gold_usd_oz = ginfo.get("currentPrice") or ginfo.get("regularMarketPrice") or 0.0
-        gold_usd_oz_prev = (
-            ginfo.get("previousClose") or ginfo.get("regularMarketPreviousClose") or gold_usd_oz
+        holdings.append(
+            PortfolioHolding(
+                ticker=ticker,
+                name=name,
+                shares=shares,
+                price=round(price, 2),
+                change_pct=round(change_pct, 2),
+                change_dollar=round(change_dollar, 2),
+                total_value=total,
+                total_pnl=pnl,
+                cost_basis=unit_cost,
+                cost_value=invested,
+                total_return=gain,
+                total_return_pct=gain_pct,
+            )
         )
+
+    # ── Precious metals ───────────────────────────────────────────────────
+    # Each metal is its own try/except: a missing silver quote must not remove
+    # the gold row, and vice versa.
+    try:
+        fx = yf.Ticker("EURUSD=X").info or {}
         # FX pairs and futures often populate regularMarketPrice but leave
         # currentPrice null, so both fields must be tried on each quote.
-        fx = yf.Ticker("EURUSD=X").info or {}
         eur_usd = fx.get("currentPrice") or fx.get("regularMarketPrice") or 0.0
+    except Exception:  # noqa: BLE001
+        log.warning("EURUSD quote unavailable", exc_info=True)
+        eur_usd = 0.0
 
-        if gold_usd_oz and eur_usd:
-            price_g = gold_usd_oz / eur_usd / GRAMS_PER_OZ
-            prev_g = gold_usd_oz_prev / eur_usd / GRAMS_PER_OZ
+    for metal_ticker, metal_name, contract, grams, cost_per_g in METALS:
+        if not eur_usd:
+            break
+        try:
+            minfo = yf.Ticker(contract).info or {}
+            usd_oz = minfo.get("currentPrice") or minfo.get("regularMarketPrice") or 0.0
+            usd_oz_prev = (
+                minfo.get("previousClose") or minfo.get("regularMarketPreviousClose") or usd_oz
+            )
+            if not usd_oz:
+                log.warning("%s quote empty, skipping", metal_ticker)
+                continue
 
-            gold_value = round(GOLD_GRAMS * price_g, 2)
-            gold_cost = round(GOLD_GRAMS * GOLD_COST_EUR_PER_GRAM, 2)
-            gold_return = round(gold_value - gold_cost, 2)
-            gold_day_pnl = round(GOLD_GRAMS * (price_g - prev_g), 2)
+            price_g = usd_oz / eur_usd / GRAMS_PER_OZ
+            prev_g = usd_oz_prev / eur_usd / GRAMS_PER_OZ
 
-            total_value += gold_value
-            total_pnl += gold_day_pnl
+            metal_value = round(grams * price_g, 2)
+            metal_day_pnl = round(grams * (price_g - prev_g), 2)
+            # cost_per_g is None where the purchase price is unknown; in that
+            # case Cost, Invested and Return all stay null and render as em dashes.
+            metal_cost = round(grams * cost_per_g, 2) if cost_per_g else None
+            metal_return: float | None = None
+            metal_pct: float | None = None
+            if metal_cost:
+                metal_return = round(metal_value - metal_cost, 2)
+                metal_pct = round(metal_return / metal_cost * 100, 2)
 
-            holdings.append(PortfolioHolding(
-                ticker="XAU",
-                name="Gold bullion",
-                shares=GOLD_GRAMS,
-                price=round(price_g, 2),
-                change_pct=round((price_g / prev_g - 1) * 100, 2) if prev_g else 0.0,
-                change_dollar=round(price_g - prev_g, 2),
-                total_value=gold_value,
-                total_pnl=gold_day_pnl,
-                unit="g",
-                cost_basis=GOLD_COST_EUR_PER_GRAM,
-                cost_value=gold_cost,
-                total_return=gold_return,
-                total_return_pct=round(gold_return / gold_cost * 100, 2) if gold_cost else None,
-            ))
-    except Exception:  # noqa: BLE001 — a missing gold quote must not 500 the page
-        log.warning("gold position unavailable", exc_info=True)
+            total_value += metal_value
+            total_pnl += metal_day_pnl
+
+            holdings.append(
+                PortfolioHolding(
+                    ticker=metal_ticker,
+                    name=metal_name,
+                    shares=grams,
+                    price=round(price_g, 2),
+                    change_pct=round((price_g / prev_g - 1) * 100, 2) if prev_g else 0.0,
+                    change_dollar=round(price_g - prev_g, 2),
+                    total_value=metal_value,
+                    total_pnl=metal_day_pnl,
+                    unit="g",
+                    cost_basis=cost_per_g,
+                    cost_value=metal_cost,
+                    total_return=metal_return,
+                    total_return_pct=metal_pct,
+                )
+            )
+        except Exception:  # noqa: BLE001 — one metal must not 500 the page
+            log.warning("%s position unavailable", metal_ticker, exc_info=True)
 
     result = PortfolioResponse(
         holdings=holdings,
