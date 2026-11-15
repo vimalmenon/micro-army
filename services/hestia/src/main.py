@@ -115,7 +115,8 @@ async def cluster_nodes():
 
 # ─── Portfolio (public, no auth required) ────────
 
-@app.get("/portfolio", response_model=PortfolioResponse, tags=["portfolio"])
+@app.get("/portfolio", response_model=PortfolioResponse, tags=["portfolio"],
+         dependencies=[Depends(require_api_key)])
 async def portfolio():
     """Live stock portfolio with current prices from yfinance."""
     return await get_portfolio()

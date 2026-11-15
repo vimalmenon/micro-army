@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { API_BASE } from '../lib/helios';
+import { API_BASE, apiHeaders } from '../lib/helios';
 
 export interface PortfolioHolding {
   ticker: string;
@@ -40,7 +40,7 @@ export function usePortfolio() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${API_BASE}/portfolio`);
+      const resp = await fetch(`${API_BASE}/portfolio`, { headers: apiHeaders() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const json = await resp.json();
       setData(json);
