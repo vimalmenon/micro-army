@@ -54,16 +54,16 @@ app = FastAPI(
 )
 
 # ─── CORS (Helios admin dashboard only) ──────────
+# The admin ingress serves the same UI on admin.completeautomate.com and
+# admin.homelab.local, and answers BOTH http and https on both hosts (no
+# TLS redirect). A browser on any of those four origins must be accepted,
+# so match the set rather than enumerating, anchored so nothing else slips in.
+# Origin was the whole bug: a disallowed origin gets a response with no
+# Access-Control-Allow-Origin header, the browser discards it, and the
+# portfolio/messages/leads pages render empty with no visible error.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://admin.completeautomate.com",
-        # The admin ingress publishes both hostnames for the same UI, so both
-        # origins must be accepted. Without this, requests from admin.homelab.local
-        # came back without an Access-Control-Allow-Origin header and the browser
-        # silently discarded them — the portfolio page rendered empty.
-        "https://admin.homelab.local",
-    ],
+    allow_origin_regex=r"^https?://admin\.(completeautomate\.com|homelab\.local)$",
     allow_methods=["GET", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-API-Key"],
     max_age=600,
