@@ -58,6 +58,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://admin.completeautomate.com",
+        # The admin ingress publishes both hostnames for the same UI, so both
+        # origins must be accepted. Without this, requests from admin.homelab.local
+        # came back without an Access-Control-Allow-Origin header and the browser
+        # silently discarded them — the portfolio page rendered empty.
+        "https://admin.homelab.local",
     ],
     allow_methods=["GET", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-API-Key"],
